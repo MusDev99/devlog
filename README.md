@@ -7,7 +7,7 @@ Jot work notes on your phone during the day, get a ready-to-paste standup each m
 | Feature | Status |
 |---|---|
 | 📱 Installable PWA, launches offline | ✅ v0.1 |
-| 📝 Quick notes (text + voice), tagged done / doing / blocker | 🛠️ Week 2 |
+| 📝 Quick notes (text + voice), tagged done / doing / blocker, offline | ✅ v0.2 |
 | 🤖 AI standup (yesterday / today / blockers) with rule-based fallback | 🛠️ Week 3 |
 | 🔒 Sign-in on the AI function, rate limit, spend cap | 🛠️ Week 4 |
 | 📅 Friday recap, one-tap copy | 🛠️ Week 5 |
@@ -27,11 +27,17 @@ Node 22.18+ (tests run TypeScript directly with `node --test`).
 | Path | What |
 |---|---|
 | `src/App.tsx` | Main screen |
-| `src/lib/` | Pure logic (dates) and PWA helpers |
+| `src/components/` | `Composer` (add a note), `NoteList` (today, grouped by tag) |
+| `src/lib/` | Pure logic (`notes.ts`, `today.ts`), `db.ts` (IndexedDB, the only storage module), `speech.ts`, PWA helpers |
 | `public/sw.js`, `public/sw-policy.js` | Service worker and its tested routing rules |
 | `build/sw-assets.ts` | Vite plugin: list of hashed files to precache |
 | `vercel.json` | Security headers, CSP, cache headers |
 | `docs/features/` | One `feature.md` per feature |
+
+## 💡 Tips
+
+- Start a note with `b:` (blocker), `done:` or `wip:` to tag it without tapping.
+- Voice uses the browser's own speech service (Chrome/Safari); the mic button hides where it is missing.
 
 ## ☁️ Deploy (Vercel)
 
