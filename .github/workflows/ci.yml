@@ -1,0 +1,33 @@
+# Gate for every PR: typecheck, unit tests, production build, dependency audit.
+# Add "verify" as a required status check next to "branch-policy" (see BRANCHING.md).
+name: ci
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Verify (typecheck + tests + build)
+        run: npm run verify
+      - name: Audit runtime dependencies
+        run: npm audit --omit=dev --audit-level=high
