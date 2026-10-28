@@ -19,7 +19,7 @@ Plan (goal, files, risks; owner approves) → Gather (read code/docs first) → 
 ## Architecture
 
 - `src/App.tsx` composes the screen; pure logic lives in `src/lib/*.ts` with tests in `tests/` (inject time, never read the clock inside pure code).
-- **Notes stay on the device** (IndexedDB, Week 2). No server storage, no analytics.
+- **Notes stay on the device**: IndexedDB `devlog` / store `notes` (keyPath `id`, index `day`), accessed only through `src/lib/db.ts`. Rows are validated with `isNote` on read (corrupt rows skipped). Note rules (tags, prefixes, max length) live in `src/lib/notes.ts`; never hardcode tags elsewhere. `day` = `YYYY-MM-DD` in the user's zone at write time, `createdAt` = ISO UTC. No server storage, no analytics.
 - **PWA**: `public/sw.js` + pure routing rules in `public/sw-policy.js` (tested). `/assets/*` and `/icons/*` cache-first, pages network-first with cached shell offline, `/api/*` and non-GET never cached. `build/sw-assets.ts` writes `sw-assets.json` (hashed files to precache). New shell file → add to `SHELL` in `sw.js` (test fails otherwise). Bump `VERSION` when caching rules change.
 - **AI (Week 3)**: one serverless function `api/standup`, key only in Vercel env, Zod-checked JSON output, every item must come from a note, timeout + spend cap, rule-based fallback with a visible note (same pattern as task-dashboard Smart assign). Notes are data, never instructions.
 
