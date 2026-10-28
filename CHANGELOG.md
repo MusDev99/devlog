@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-10-29 00:17 · v0.4.0
+
+- feat(auth): Google sign-in (OIDC + PKCE) with an email allow-list replaces the shared passcode for the AI standup
+- feat: account line on the standup card ("AI on · email" / Sign in with Google / Sign out) and a sign-in result toast
+- security: signed `HttpOnly` cookies, same-origin check on cookie-authenticated requests, per-account rate limit, fail closed without config
+- test: auth tests (ID token checks, cookie tampering, PKCE vector, limiter); `npm run eval` now calls Claude directly
+- docs: Google OAuth setup, new environment variables, OWASP audit
+
 ## 2026-10-28 23:52 · v0.3.0
 
 - feat: standup card (yesterday / today / blockers) with one-tap copy

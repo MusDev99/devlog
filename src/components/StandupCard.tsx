@@ -1,8 +1,8 @@
-import { useState } from 'preact/hooks';
+import { useEffect, useState } from 'preact/hooks';
 import { previousWorkday } from '../lib/db.ts';
 import type { Note } from '../lib/notes.ts';
 import { formatStandup } from '../lib/standup.ts';
-import { buildStandup, loadPasscode, savePasscode, type StandupResult } from '../lib/standup-client.ts';
+import { buildStandup, fetchSession, signOut, type StandupResult } from '../lib/standup-client.ts';
 
 type Props = { today: string; notes: Note[]; online: boolean; onToast: (message: string) => void };
 
@@ -10,13 +10,17 @@ type Props = { today: string; notes: Note[]; online: boolean; onToast: (message:
 export function StandupCard({ today, notes, online, onToast }: Props) {
   const [result, setResult] = useState<StandupResult | null>(null);
   const [busy, setBusy] = useState(false);
-  const [passcode, setPasscode] = useState(loadPasscode);
+  const [account, setAccount] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (online) fetchSession().then(setAccount);
+  }, [online]);
 
   async function generate() {
     setBusy(true);
     try {
       const previous = await previousWorkday(today);
-      setResult(await buildStandup(previous, notes, passcode, online));
+      setResult(await buildStandup(previous, notes, account !== null, online));
     } catch {
       onToast('Could not read notes from this device');
     } finally {
@@ -87,25 +91,34 @@ export function StandupCard({ today, notes, online, onToast }: Props) {
         )}
       </div>
 
-      <details class="mt-3 text-sm text-muted">
-        <summary class="min-h-11 cursor-pointer py-3">AI settings</summary>
-        <label for="passcode" class="block">
-          Passcode (from your Vercel settings)
-        </label>
-        <input
-          id="passcode"
-          type="password"
-          autoComplete="off"
-          value={passcode}
-          onChange={(e) => {
-            const value = e.currentTarget.value.trim();
-            setPasscode(value);
-            savePasscode(value);
-          }}
-          class="mt-1 min-h-11 w-full rounded-xl border border-line bg-bg px-3 text-base text-fg"
-        />
-        <p class="mt-1">Only your notes' text and tags are sent to the AI when you tap Build. Without a passcode, standups use tag rules on this phone.</p>
-      </details>
+      <div class="mt-3 flex min-h-11 items-center justify-between gap-2 text-sm text-muted">
+        {account ? (
+          <>
+            <span class="min-w-0 truncate">AI on · {account}</span>
+            <button
+              type="button"
+              class="min-h-11 shrink-0 px-2 text-fg underline"
+              onClick={async () => {
+                await signOut().catch(() => undefined);
+                setAccount(null);
+                onToast('Signed out of AI');
+              }}
+            >
+              Sign out
+            </button>
+          </>
+        ) : (
+          <>
+            <span>AI off · rules on this phone</span>
+            {online && (
+              <a href="/api/auth/login" class="flex min-h-11 shrink-0 items-center px-2 text-fg underline">
+                Sign in with Google
+              </a>
+            )}
+          </>
+        )}
+      </div>
+      <p class="mt-1 text-xs text-muted">Only today's and the last workday's note text and tags are sent, and only when you tap Build.</p>
     </section>
   );
 }
