@@ -45,3 +45,11 @@ export async function saveNote(note: Note): Promise<void> {
 export async function deleteNote(id: string): Promise<void> {
   await done((await store('readwrite')).delete(id));
 }
+
+/** Notes of the most recent day before `day` that has any (the "yesterday" of a standup, weekends skipped). */
+export async function previousWorkday(day: string): Promise<Note[]> {
+  const index = (await store('readonly')).index('day');
+  const cursor = await done(index.openCursor(IDBKeyRange.upperBound(day, true), 'prev'));
+  if (!cursor) return [];
+  return notesForDay(String(cursor.key));
+}

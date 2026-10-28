@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-10-28 23:52 · v0.3.0
+
+- feat: standup card (yesterday / today / blockers) with one-tap copy
+- feat: AI standup through `POST /api/standup` (passcode, rate limit, 4,000-character cap, structured output, every item must cite a note, missing blockers added back)
+- feat: rule-based standup when offline, without a passcode, or when the AI fails, with the reason shown
+- test: golden set of 10 note days (`tests/golden/`), `npm run eval` for the live check
+
 ## 2026-10-28 23:44 · v0.2.0
 
 - feat: quick notes tagged done / doing / blocker, saved in IndexedDB on the device (works offline)

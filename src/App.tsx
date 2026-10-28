@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'preact/hooks';
 import { Composer } from './components/Composer.tsx';
 import { NoteList } from './components/NoteList.tsx';
+import { StandupCard } from './components/StandupCard.tsx';
 import { deleteNote, notesForDay, saveNote } from './lib/db.ts';
 import type { Draft, Note } from './lib/notes.ts';
 import { useOnline } from './lib/pwa.ts';
@@ -16,6 +17,7 @@ export function App() {
   const today = dayKey(now, timeZone);
   const [load, setLoad] = useState<Load>({ state: 'loading' });
   const [undo, setUndo] = useState<Note | null>(null);
+  const [toast, setToast] = useState<string | null>(null);
 
   useEffect(() => {
     notesForDay(today)
@@ -57,6 +59,12 @@ export function App() {
     return () => clearTimeout(timer);
   }, [undo]);
 
+  useEffect(() => {
+    if (!toast) return;
+    const timer = setTimeout(() => setToast(null), 3000);
+    return () => clearTimeout(timer);
+  }, [toast]);
+
   return (
     <div class="mx-auto flex min-h-dvh w-full max-w-xl flex-col px-4 pt-[max(16px,env(safe-area-inset-top))]">
       <header class="flex items-start justify-between gap-4 py-4">
@@ -77,7 +85,7 @@ export function App() {
       <main class="flex flex-1 flex-col pb-4">
         <section aria-labelledby="today-title" class="rounded-2xl border border-line bg-surface p-5">
           <h2 id="today-title" class="text-lg font-semibold">
-            Today <span class="text-sm font-normal text-muted">· {notes.length} notes</span>
+            Today <span class="text-sm font-normal text-muted">· {notes.length} {notes.length === 1 ? 'note' : 'notes'}</span>
           </h2>
           {load.state === 'loading' && <div class="mt-3 h-16 animate-pulse rounded-xl bg-line/40" aria-label="Loading notes" />}
           {load.state === 'error' && (
@@ -94,15 +102,15 @@ export function App() {
           {notes.length > 0 && <NoteList notes={notes} onDelete={remove} />}
         </section>
 
-        <section aria-labelledby="standup-title" class="mt-4 rounded-2xl border border-dashed border-line p-5">
-          <h2 id="standup-title" class="text-lg font-semibold">Standup</h2>
-          <p class="mt-2 text-muted">Your AI standup (yesterday, today, blockers) arrives in the next update.</p>
-        </section>
+        <StandupCard today={today} notes={notes} online={online} onToast={setToast} />
 
-        <p class="pt-6 text-center text-xs text-muted">DevLog v{__APP_VERSION__} · notes stay on this device</p>
+        <p class="pt-6 text-center text-xs text-muted">DevLog v{__APP_VERSION__} · notes stored on this device</p>
       </main>
 
       <div aria-live="polite" class="pointer-events-none fixed inset-x-0 bottom-28 flex justify-center px-4">
+        {toast && !undo && (
+          <div class="pointer-events-auto rounded-xl border border-line bg-surface px-4 py-3 text-sm shadow-lg">{toast}</div>
+        )}
         {undo && (
           <div class="pointer-events-auto flex items-center gap-3 rounded-xl border border-line bg-surface px-4 py-2 text-sm shadow-lg">
             Note deleted
