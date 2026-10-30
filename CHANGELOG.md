@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-10-30 12:30
+
+- chore(agents): shared code-review skill in `.agents/skills/code-review/SKILL.md` (7-area checklist, findings by severity)
+
 ## 2026-10-28 23:52 · v0.3.0
 
 - feat: standup card (yesterday / today / blockers) with one-tap copy

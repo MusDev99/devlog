@@ -35,6 +35,7 @@ Node 22.18+ (tests run TypeScript directly with `node --test`).
 | `build/sw-assets.ts` | Vite plugin: list of hashed files to precache |
 | `vercel.json` | Security headers, CSP, cache headers |
 | `docs/features/` | One `feature.md` per feature |
+| `.agents/skills/code-review/` | Shared code-review checklist, findings by severity |
 
 ## 💡 Tips
 
