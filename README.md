@@ -35,6 +35,7 @@ Node 22.18+ (tests run TypeScript directly with `node --test`).
 | `build/sw-assets.ts` | Vite plugin: list of hashed files to precache |
 | `vercel.json` | Security headers, CSP, cache headers |
 | `docs/features/` | One `feature.md` per feature |
+| `.claude/agents/`, `.claude/commands/team.md` | Agent team: Product Owner, Project Manager, Software Engineer, QA, DevOps |
 
 ## 💡 Tips
 
@@ -57,6 +58,23 @@ Node 22.18+ (tests run TypeScript directly with `node --test`).
 Without them the app still works: `/api/standup` returns 503 and standups use the tag rules.
 
 4. Live eval after deploy: `DEVLOG_URL=https://<deploy> DEVLOG_PASSCODE=... npm run eval`.
+
+## 🤖 Agent team
+
+Five Claude Code subagents work on this repo like a small team. In Claude Code, run:
+
+```
+/team add a button to export today's notes as Markdown
+```
+
+| Step | Role | You |
+|---|---|---|
+| 1 | 🧑‍💼 Product Owner writes `docs/features/<slug>/feature.md` | 🙋 approve the spec |
+| 2 | 📋 Project Manager splits it into tasks | |
+| 3 | 👩‍💻 Engineer implements, 🧪 QA reviews (max 3 rounds) | |
+| 4 | 🚀 DevOps runs the gate and drafts the PR | 🙋 push and squash-merge |
+
+Agents can't read `.env`, push to `main`, force-push or merge (`.claude/settings.json`). See `docs/features/agent-team/feature.md`.
 
 ## 🌿 Contributing
 
