@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-10-30 03:58
+
+- feat(agents): five-role agent team for Claude Code (Product Owner, Project Manager, Software Engineer, QA, DevOps) and a `/team` command with two owner gates and a 3-round QA cap
+- chore(agents): deny rules for `.env`, pushes to `main`, force-push and merge; `tests/agents.test.ts` checks roles and rules
 ## 2026-10-30 12:30
 
 - chore(agents): shared code-review skill in `.agents/skills/code-review/SKILL.md` (7-area checklist, findings by severity)
