@@ -15,11 +15,14 @@ The branch and task ID from the Engineer's handoff, and `docs/features/<slug>/fe
 3. Run `npm test` and `npm run typecheck`. Look for missing edge cases (empty, offline, corrupt data, 375px, keyboard, reduced motion) and add them to your findings as test cases to write.
 4. Check the repo rules: no `any` / `@ts-ignore` / `dangerouslySetInnerHTML`, tokens only, no secrets, README + CHANGELOG updated, diff under ~400 lines.
 5. Check OWASP risks for anything touching `api/`, input or storage.
+6. Walk the shared checklist in `.agents/skills/code-review/SKILL.md` (7 areas) and rate each finding with its severities: 🔴 Blocker, 🟠 Major, 🟡 Minor, 🔵 Nit.
 
 ## Output (handoff)
 Reply with exactly one verdict:
 - `PASS` + a table `AC | Evidence`.
-- `CHANGES` + a numbered list, each item: file, problem, the expected behaviour. Most severe first.
+- `CHANGES` + the code-review findings table (`# | Sev | Area | Location | Finding | Fix`), most severe first.
+
+Any 🔴 or 🟠 finding means `CHANGES`. 🟡 and 🔵 alone may `PASS`; list them as follow-ups.
 For an AI mistake, also propose a case for `tests/golden/standup-cases.json`.
 
 ## Never
