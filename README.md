@@ -37,6 +37,8 @@ Node 22.18+ (tests run TypeScript directly with `node --test`).
 | `build/sw-assets.ts` | Vite plugin: list of hashed files to precache |
 | `vercel.json` | Security headers, CSP, cache headers |
 | `docs/features/` | One `feature.md` per feature |
+| `.claude/agents/`, `.claude/commands/team.md` | Agent team: Product Owner, Project Manager, Software Engineer, QA, DevOps |
+| `.agents/skills/code-review/` | Shared code-review checklist, findings by severity |
 
 ## 💡 Tips
 
@@ -65,6 +67,25 @@ Without them the app still works: `/api/standup` returns 503 and standups use th
 5. Open the app → **Sign in with Google** under the standup card. Signed out, the app keeps working with rules.
 6. Live eval (calls Claude directly, costs credit): `ANTHROPIC_API_KEY=... npm run eval`.
 
+## 🤖 Agent team
+
+Five Claude Code subagents work on this repo like a small team. In Claude Code, run:
+
+```
+/team add a button to export today's notes as Markdown
+```
+
+| Step | Role | You |
+|---|---|---|
+| 1 | 🧑‍💼 Product Owner writes `docs/features/<slug>/feature.md` | 🙋 approve the spec |
+| 2 | 📋 Project Manager splits it into tasks | |
+| 3 | 👩‍💻 Engineer implements, 🧪 QA reviews (max 3 rounds) | |
+| 4 | 🚀 DevOps runs the gate and drafts the PR | 🙋 push and squash-merge |
+
+Pick up an unfinished run with `/team resume <slug>`. Each run logs role, task, round and outcome to `docs/features/<slug>/runs.md`, and QA reviews with the shared checklist in `.agents/skills/code-review/SKILL.md`.
+
+Agents can't read `.env`, push to `main`, force-push or merge (`.claude/settings.json`). See `docs/features/agent-team/feature.md`.
+
 ## 🌿 Contributing
 
-Follows [Agentic Coding Style](https://musdev99.github.io/agentic-coding-style) and [BRANCHING.md](https://github.com/MusDev99/agentic-coding-style/blob/main/BRANCHING.md): `feat/*` branches, Conventional Commit PR titles, squash merge, `npm run verify` green. See [CHANGELOG.md](CHANGELOG.md).
+Follows [Agentic Coding Style](https://musdev99.github.io/agentic-coding-style) and [BRANCHING.md](https://github.com/MusDev99/agentic-coding-style/blob/main/BRANCHING.md): `feat/*` branches, Conventional Commit PR titles, squash merge, `npm run verify` green. `branch-cleanup.yml` deletes the branch once its PR is merged (keep *Automatically delete head branches* on too). See [CHANGELOG.md](CHANGELOG.md).

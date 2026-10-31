@@ -1,12 +1,31 @@
 # Changelog
 
-## 2026-10-29 00:17 · v0.4.0
+## 2026-10-31 22:16 · v0.4.0
 
 - feat(auth): Google sign-in (OIDC + PKCE) with an email allow-list replaces the shared passcode for the AI standup
 - feat: account line on the standup card ("AI on · email" / Sign in with Google / Sign out) and a sign-in result toast
 - security: signed `HttpOnly` cookies, same-origin check on cookie-authenticated requests, per-account rate limit, fail closed without config
 - test: auth tests (ID token checks, cookie tampering, PKCE vector, limiter); `npm run eval` now calls Claude directly
 - docs: Google OAuth setup, new environment variables, OWASP audit
+
+## 2026-10-31 15:15
+
+- ci: `branch-cleanup.yml` deletes a PR's branch after it is merged (skips forks, `main`, stacked bases)
+
+## 2026-10-31 04:26
+
+- feat(agents): `/team resume <slug>` picks a run back up from the feature's status line
+- feat(agents): every run appends to `docs/features/<slug>/runs.md` (role, task, round, outcome)
+- feat(agents): QA reviews with the shared code-review skill; any 🔴 or 🟠 finding means `CHANGES`
+
+## 2026-10-30 12:30
+
+- chore(agents): shared code-review skill in `.agents/skills/code-review/SKILL.md` (7-area checklist, findings by severity)
+
+## 2026-10-30 03:58
+
+- feat(agents): five-role agent team for Claude Code (Product Owner, Project Manager, Software Engineer, QA, DevOps) and a `/team` command with two owner gates and a 3-round QA cap
+- chore(agents): deny rules for `.env`, pushes to `main`, force-push and merge; `tests/agents.test.ts` checks roles and rules
 
 ## 2026-10-28 23:52 · v0.3.0
 
