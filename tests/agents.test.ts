@@ -51,6 +51,20 @@ test('team command: names every role and both owner gates', () => {
   assert.match(command, /3 rounds/);
 });
 
+test('team command: can resume a run and logs every step', () => {
+  const command = read('.claude/commands/team.md');
+  assert.match(command, /resume <slug>/);
+  assert.match(command, /runs\.md/);
+});
+
+test('qa: reviews with the shared code-review skill and blocks on major findings', () => {
+  const qa = read('.claude/agents/qa.md');
+  const skill = '.agents/skills/code-review/SKILL.md';
+  assert.ok(qa.includes(skill), 'qa must name the shared skill');
+  assert.match(read(skill), /^---\nname: code-review\n/);
+  assert.match(qa, /Any 🔴 or 🟠 finding means `CHANGES`/);
+});
+
 test('settings: secrets and main are off limits', () => {
   const deny: string[] = JSON.parse(read('.claude/settings.json')).permissions.deny;
   assert.ok(deny.includes('Read(./.env)'));

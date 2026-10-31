@@ -75,6 +75,8 @@ Five Claude Code subagents work on this repo like a small team. In Claude Code, 
 | 3 | 👩‍💻 Engineer implements, 🧪 QA reviews (max 3 rounds) | |
 | 4 | 🚀 DevOps runs the gate and drafts the PR | 🙋 push and squash-merge |
 
+Pick up an unfinished run with `/team resume <slug>`. Each run logs role, task, round and outcome to `docs/features/<slug>/runs.md`, and QA reviews with the shared checklist in `.agents/skills/code-review/SKILL.md`.
+
 Agents can't read `.env`, push to `main`, force-push or merge (`.claude/settings.json`). See `docs/features/agent-team/feature.md`.
 
 ## 🌿 Contributing

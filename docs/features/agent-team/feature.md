@@ -30,6 +30,16 @@ Five Claude Code subagents act as a small software team on this repo, run locall
 | AC4 | Agents cannot read `.env`, push to `main`, force-push or merge | `.claude/settings.json` deny rules, `tests/agents.test.ts` |
 | AC5 | A dry run on a small idea produces a spec and stops at Gate 1 | owner runs `/team` locally (Week 1 gate) |
 
+## Week 2 (local CLI)
+
+The original Week 2 wired GitHub Actions. With the local CLI choice it becomes: resume, a run log, and QA on the shared code-review checklist.
+
+| ID | Given / When / Then | Evidence |
+|---|---|---|
+| AC6 | `/team resume <slug>` continues from the feature's status line | `.claude/commands/team.md`, `tests/agents.test.ts` |
+| AC7 | Every subagent return appends a row to `docs/features/<slug>/runs.md` | `.claude/commands/team.md`, `tests/agents.test.ts` |
+| AC8 | QA walks `.agents/skills/code-review/SKILL.md`; any 🔴/🟠 finding means `CHANGES` | `.claude/agents/qa.md`, `tests/agents.test.ts` |
+
 ## Guardrails
 
 | Risk | Mitigation |
