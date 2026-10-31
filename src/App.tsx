@@ -60,6 +60,14 @@ export function App() {
   }, [undo]);
 
   useEffect(() => {
+    // Back from Google sign-in: say what happened (Peak-End), then clean the URL.
+    const result = new URLSearchParams(location.search).get('signin');
+    if (!result) return;
+    setToast(result === 'ok' ? 'Signed in, AI standups are on' : 'Sign-in not allowed for this account');
+    history.replaceState(null, '', location.pathname);
+  }, []);
+
+  useEffect(() => {
     if (!toast) return;
     const timer = setTimeout(() => setToast(null), 3000);
     return () => clearTimeout(timer);

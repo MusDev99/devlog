@@ -28,7 +28,9 @@ Node 22.18+ (tests run TypeScript directly with `node --test`).
 |---|---|
 | `src/App.tsx` | Main screen |
 | `src/components/` | `Composer` (add a note), `NoteList` (today, grouped by tag), `StandupCard` |
-| `api/standup.ts` | Vercel function: passcode, limits, Claude call, grounding |
+| `api/standup.ts` | Vercel function: session check, limits, grounding |
+| `api/_lib/standup-model.ts` | The one Claude call (shared with `npm run eval`) |
+| `api/auth/*`, `api/_lib/auth.ts` | Google sign-in (OIDC + PKCE), signed session cookie, allow-list |
 | `tests/golden/` | Standup golden set (10 note days), used by tests and `npm run eval` |
 | `src/lib/` | Pure logic (`notes.ts`, `standup.ts`, `today.ts`), `standup-client.ts` (AI call + fallback), `db.ts` (IndexedDB, the only storage module), `speech.ts`, PWA helpers |
 | `public/sw.js`, `public/sw-policy.js` | Service worker and its tested routing rules |
@@ -53,12 +55,17 @@ Node 22.18+ (tests run TypeScript directly with `node --test`).
 | Variable | Required | What |
 |---|---|---|
 | `ANTHROPIC_API_KEY` | for AI | Claude API key |
-| `DEVLOG_PASSCODE` | for AI | Long random string; enter the same value in the app under **AI settings** |
+| `AUTH_SECRET` | for AI | 32+ random characters (`openssl rand -base64 48`), signs the session cookie |
+| `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | for AI | Google OAuth client (Web application) |
+| `APP_URL` | for AI | Public origin, e.g. `https://devlog.vercel.app` (no trailing slash) |
+| `ALLOWED_EMAILS` | for AI | Comma-separated Google accounts allowed to use the AI |
 | `STANDUP_MODEL` | no | Model override (default `claude-opus-5-5`) |
 
 Without them the app still works: `/api/standup` returns 503 and standups use the tag rules.
 
-4. Live eval after deploy: `DEVLOG_URL=https://<deploy> DEVLOG_PASSCODE=... npm run eval`.
+4. Google Cloud → APIs & Services → Credentials → OAuth client → **Authorised redirect URI** `<APP_URL>/api/auth/callback` (one per deploy URL you sign in on).
+5. Open the app → **Sign in with Google** under the standup card. Signed out, the app keeps working with rules.
+6. Live eval (calls Claude directly, costs credit): `ANTHROPIC_API_KEY=... npm run eval`.
 
 ## 🤖 Agent team
 
