@@ -36,6 +36,7 @@ Node 22.18+ (tests run TypeScript directly with `node --test`).
 | `vercel.json` | Security headers, CSP, cache headers |
 | `docs/features/` | One `feature.md` per feature |
 | `.claude/agents/`, `.claude/commands/team.md` | Agent team: Product Owner, Project Manager, Software Engineer, QA, DevOps |
+| `.agents/skills/code-review/` | Shared code-review checklist, findings by severity |
 
 ## 💡 Tips
 
