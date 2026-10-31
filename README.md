@@ -9,8 +9,8 @@ Jot work notes on your phone during the day, get a ready-to-paste standup each m
 | 📱 Installable PWA, launches offline | ✅ v0.1 |
 | 📝 Quick notes (text + voice), tagged done / doing / blocker, offline | ✅ v0.2 |
 | 🤖 AI standup (yesterday / today / blockers) with rule-based fallback, one-tap copy | ✅ v0.3 |
-| 🔒 Sign-in on the AI function, rate limit, spend cap | 🛠️ Week 4 |
-| 📅 Friday recap, one-tap copy | 🛠️ Week 5 |
+| 🔒 Google sign-in with an allow-list on the AI, rate limit | ✅ v0.4 |
+| 📅 Friday recap (shipped / in progress / blockers), offline, one-tap copy | ✅ v0.5 |
 
 ## 🚀 Quick start
 
@@ -27,12 +27,12 @@ Node 22.18+ (tests run TypeScript directly with `node --test`).
 | Path | What |
 |---|---|
 | `src/App.tsx` | Main screen |
-| `src/components/` | `Composer` (add a note), `NoteList` (today, grouped by tag), `StandupCard` |
+| `src/components/` | `Composer` (add a note), `NoteList` (today, grouped by tag), `StandupCard`, `RecapCard` (week recap) |
 | `api/standup.ts` | Vercel function: session check, limits, grounding |
 | `api/_lib/standup-model.ts` | The one Claude call (shared with `npm run eval`) |
 | `api/auth/*`, `api/_lib/auth.ts` | Google sign-in (OIDC + PKCE), signed session cookie, allow-list |
 | `tests/golden/` | Standup golden set (10 note days), used by tests and `npm run eval` |
-| `src/lib/` | Pure logic (`notes.ts`, `standup.ts`, `today.ts`), `standup-client.ts` (AI call + fallback), `db.ts` (IndexedDB, the only storage module), `speech.ts`, PWA helpers |
+| `src/lib/` | Pure logic (`notes.ts`, `standup.ts`, `recap.ts`, `today.ts`), `standup-client.ts` (AI call + fallback), `db.ts` (IndexedDB, the only storage module), `speech.ts`, PWA helpers |
 | `public/sw.js`, `public/sw-policy.js` | Service worker and its tested routing rules |
 | `build/sw-assets.ts` | Vite plugin: list of hashed files to precache |
 | `vercel.json` | Security headers, CSP, cache headers |
@@ -44,6 +44,7 @@ Node 22.18+ (tests run TypeScript directly with `node --test`).
 
 - Start a note with `b:` (blocker), `done:` or `wip:` to tag it without tapping.
 - Start the day with **Build standup**, then **Copy** into your team chat.
+- On Friday the **Friday recap** opens by itself (shipped / in progress / blockers for the week); other days tap **Week so far**.
 - Voice uses the browser's own speech service (Chrome/Safari); the mic button hides where it is missing.
 
 ## ☁️ Deploy (Vercel)

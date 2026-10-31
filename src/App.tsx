@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'preact/hooks';
 import { Composer } from './components/Composer.tsx';
 import { NoteList } from './components/NoteList.tsx';
+import { RecapCard } from './components/RecapCard.tsx';
 import { StandupCard } from './components/StandupCard.tsx';
 import { deleteNote, notesForDay, saveNote } from './lib/db.ts';
 import type { Draft, Note } from './lib/notes.ts';
@@ -111,6 +112,8 @@ export function App() {
         </section>
 
         <StandupCard today={today} notes={notes} online={online} onToast={setToast} />
+
+        <RecapCard today={today} notes={notes} onToast={setToast} />
 
         <p class="pt-6 text-center text-xs text-muted">DevLog v{__APP_VERSION__} · notes stored on this device</p>
       </main>
