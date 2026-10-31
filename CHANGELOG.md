@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-10-31 15:15
+
+- ci: `branch-cleanup.yml` deletes a PR's branch after it is merged (skips forks, `main`, stacked bases)
+
 ## 2026-10-31 04:26
 
 - feat(agents): `/team resume <slug>` picks a run back up from the feature's status line

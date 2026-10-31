@@ -81,4 +81,4 @@ Agents can't read `.env`, push to `main`, force-push or merge (`.claude/settings
 
 ## 🌿 Contributing
 
-Follows [Agentic Coding Style](https://musdev99.github.io/agentic-coding-style) and [BRANCHING.md](https://github.com/MusDev99/agentic-coding-style/blob/main/BRANCHING.md): `feat/*` branches, Conventional Commit PR titles, squash merge, `npm run verify` green. See [CHANGELOG.md](CHANGELOG.md).
+Follows [Agentic Coding Style](https://musdev99.github.io/agentic-coding-style) and [BRANCHING.md](https://github.com/MusDev99/agentic-coding-style/blob/main/BRANCHING.md): `feat/*` branches, Conventional Commit PR titles, squash merge, `npm run verify` green. `branch-cleanup.yml` deletes the branch once its PR is merged (keep *Automatically delete head branches* on too). See [CHANGELOG.md](CHANGELOG.md).
