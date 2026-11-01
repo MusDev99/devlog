@@ -10,6 +10,7 @@ npm run build      # production build to dist/
 npm run preview    # serve dist/ (service worker on)
 npm test           # node --test, Node 22.18+ (runs .ts directly)
 npm run verify     # typecheck + tests + build (= CI, run before every commit)
+npm run smoke -- <url>   # post-deploy checks (scripts/smoke-checks.ts, tested)
 ```
 
 ## Working loop (every change)

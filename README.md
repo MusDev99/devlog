@@ -11,6 +11,7 @@ Jot work notes on your phone during the day, get a ready-to-paste standup each m
 | 🤖 AI standup (yesterday / today / blockers) with rule-based fallback, one-tap copy | ✅ v0.3 |
 | 🔒 Google sign-in with an allow-list on the AI, rate limit | ✅ v0.4 |
 | 📅 Friday recap (shipped / in progress / blockers), offline, one-tap copy | ✅ v0.5 |
+| 🚦 Post-deploy smoke check, Laws of UX review | ✅ v1.0 |
 
 ## 🚀 Quick start
 
@@ -18,6 +19,7 @@ Jot work notes on your phone during the day, get a ready-to-paste standup each m
 npm ci
 npm run dev       # http://localhost:5173
 npm run verify    # typecheck + tests + build
+npm run smoke -- https://<deploy>   # post-deploy checks (works with AI on or off)
 ```
 
 Node 22.18+ (tests run TypeScript directly with `node --test`).
@@ -66,7 +68,8 @@ Without them the app still works: `/api/standup` returns 503 and standups use th
 
 4. Google Cloud → APIs & Services → Credentials → OAuth client → **Authorised redirect URI** `<APP_URL>/api/auth/callback` (one per deploy URL you sign in on).
 5. Open the app → **Sign in with Google** under the standup card. Signed out, the app keeps working with rules.
-6. Live eval (calls Claude directly, costs credit): `ANTHROPIC_API_KEY=... npm run eval`.
+6. Check the deploy: `npm run smoke -- https://<deploy>` (6 checks, exits 1 on failure).
+7. Live eval (calls Claude directly, costs credit): `ANTHROPIC_API_KEY=... npm run eval`.
 
 ## 🤖 Agent team
 

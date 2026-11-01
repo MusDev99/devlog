@@ -1,6 +1,6 @@
 {
   "name": "devlog",
-  "version": "0.5.0",
+  "version": "1.0.0",
   "private": true,
   "description": "Jot work notes on your phone, get an AI standup each morning. Offline-first PWA.",
   "type": "module",
@@ -14,7 +14,8 @@
     "typecheck": "tsc --noEmit",
     "test": "node --test \"tests/**/*.test.ts\"",
     "verify": "npm run typecheck && npm test && npm run build",
-    "eval": "esbuild scripts/eval-standup.ts --bundle --platform=node --format=esm --packages=external --outfile=.eval/eval.mjs --log-level=warning && node .eval/eval.mjs"
+    "eval": "esbuild scripts/eval-standup.ts --bundle --platform=node --format=esm --packages=external --outfile=.eval/eval.mjs --log-level=warning && node .eval/eval.mjs",
+    "smoke": "node scripts/smoke.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "1.3.0",
