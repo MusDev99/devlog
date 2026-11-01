@@ -1,5 +1,7 @@
 # Feature: Google sign-in for the AI standup (Week 4)
 
+> Removed on 2026-11-01 (`docs/features/no-ai/feature.md`): DevLog is now free to run, with no AI, sign-in or API keys.
+
 Roadmap slice 4 (hardening). Gate: passcode gone, AI needs an allow-listed Google account, fail closed, audit clean.
 
 ## Decision

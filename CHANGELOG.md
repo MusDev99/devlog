@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-11-01 23:00
+
+- feat!: remove the AI standup, Google sign-in and every `api/` function; the standup is built on the phone from tags
+- chore: drop `@anthropic-ai/sdk`, `zod`, `esbuild`, `npm run eval` and `.env.example`; no environment variables or API keys needed
+- test: smoke checks a static deploy (headers, PWA files, no server functions)
+
 ## 2026-11-01 22:00
 
 - feat(ui): Material Design 3 redesign in Tailwind (colour-role tokens, state layers, filter chips, filled text fields, snackbar, bottom-sheet composer)

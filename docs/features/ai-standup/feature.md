@@ -1,5 +1,7 @@
 # Feature: AI standup (Week 3)
 
+> Removed on 2026-11-01 (`docs/features/no-ai/feature.md`): DevLog is now free to run, with no AI, sign-in or API keys.
+
 Roadmap slice 3. Gate: golden set passes, no invented items, fallback tested.
 
 ## Decision
