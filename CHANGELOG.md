@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-10-31 22:19 · v0.5.0
+
+- feat(recap): Friday recap card (shipped / in progress / blockers, days logged) built on the phone from this week's notes, works offline
+- feat(recap): opens by itself Friday to Sunday; "Week so far" row on other days; one-tap copy
+- test: week range, recap rules and copy text
+
 ## 2026-10-31 22:16 · v0.4.0
 
 - feat(auth): Google sign-in (OIDC + PKCE) with an email allow-list replaces the shared passcode for the AI standup
