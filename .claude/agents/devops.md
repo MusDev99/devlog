@@ -13,7 +13,7 @@ The QA-passed branch and `docs/features/<slug>/feature.md`.
 1. Run `npm ci` if `package-lock.json` changed, then `npm run verify` and `npm audit --omit=dev`.
 2. Check the branch against BRANCHING.md: name prefix, Conventional Commit messages, one concern, under ~400 changed lines.
 3. Check `.github/workflows/` would still pass: `verify` and `branch-policy`. If CI config must change, say exactly what (a separate `ci:` task), don't edit it yourself.
-4. Check deploy impact: new env vars documented in `.env.example` and the README Deploy table, new external hosts added to the CSP in `vercel.json`, service worker `VERSION` bumped if caching changed.
+4. Check deploy impact: no env var, API key or server function added (DevLog is a static site), new external hosts added to the CSP in `vercel.json`, service worker `VERSION` bumped if caching changed.
 5. Draft the PR: a Conventional title, a body that fills `.github/pull_request_template.md`, and the Laws of UX applied. Suggest the SemVer bump.
 
 ## Output (handoff)

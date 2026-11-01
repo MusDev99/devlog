@@ -1,27 +1,21 @@
-import { useEffect, useState } from 'preact/hooks';
+import { useState } from 'preact/hooks';
 import { previousWorkday } from '../lib/db.ts';
 import type { Note } from '../lib/notes.ts';
-import { formatStandup } from '../lib/standup.ts';
-import { buildStandup, fetchSession, signOut, type StandupResult } from '../lib/standup-client.ts';
+import { formatStandup, ruleStandup, type Standup } from '../lib/standup.ts';
 import { Icon } from './Icon.tsx';
 
-type Props = { today: string; notes: Note[]; online: boolean; onToast: (message: string) => void };
+type Props = { today: string; notes: Note[]; onToast: (message: string) => void };
 
-/** Standup on demand. The person reads and copies it; nothing is sent anywhere else. */
-export function StandupCard({ today, notes, online, onToast }: Props) {
-  const [result, setResult] = useState<StandupResult | null>(null);
+/** Standup on demand, built on this phone from tags. Nothing is sent anywhere. */
+export function StandupCard({ today, notes, onToast }: Props) {
+  const [result, setResult] = useState<Standup | null>(null);
   const [busy, setBusy] = useState(false);
-  const [account, setAccount] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (online) fetchSession().then(setAccount);
-  }, [online]);
 
   async function generate() {
     setBusy(true);
     try {
       const previous = await previousWorkday(today);
-      setResult(await buildStandup(previous, notes, account !== null, online));
+      setResult(ruleStandup(previous, notes));
     } catch {
       onToast('Could not read notes from this device');
     } finally {
@@ -32,7 +26,7 @@ export function StandupCard({ today, notes, online, onToast }: Props) {
   async function copy() {
     if (!result) return;
     try {
-      await navigator.clipboard.writeText(formatStandup(result.standup));
+      await navigator.clipboard.writeText(formatStandup(result));
       onToast('Standup copied');
     } catch {
       onToast('Copy blocked by the browser, select the text instead');
@@ -41,9 +35,9 @@ export function StandupCard({ today, notes, online, onToast }: Props) {
 
   const sections: [string, string[]][] = result
     ? [
-        ['Yesterday', result.standup.yesterday],
-        ['Today', result.standup.today],
-        ['Blockers', result.standup.blockers],
+        ['Yesterday', result.yesterday],
+        ['Today', result.today],
+        ['Blockers', result.blockers],
       ]
     : [];
 
@@ -54,11 +48,6 @@ export function StandupCard({ today, notes, online, onToast }: Props) {
           <Icon name="sparkle" class="size-6 text-primary" />
           Standup
         </h2>
-        {result && (
-          <span class="inline-flex h-8 items-center rounded-lg border border-line px-3 text-xs font-medium text-muted">
-            {result.source === 'ai' ? 'AI' : `Rules · ${result.note ?? ''}`}
-          </span>
-        )}
       </div>
 
       {result ? (
@@ -99,35 +88,7 @@ export function StandupCard({ today, notes, online, onToast }: Props) {
         )}
       </div>
 
-      {/* Account line: a Material list row with a text button as its trailing action. */}
-      <div class="mt-3 flex min-h-11 items-center justify-between gap-2 text-sm text-muted">
-        {account ? (
-          <>
-            <span class="min-w-0 truncate">AI on · {account}</span>
-            <button
-              type="button"
-              class="state-layer min-h-11 shrink-0 rounded-full px-3 font-medium text-primary"
-              onClick={async () => {
-                await signOut().catch(() => undefined);
-                setAccount(null);
-                onToast('Signed out of AI');
-              }}
-            >
-              Sign out
-            </button>
-          </>
-        ) : (
-          <>
-            <span>AI off · rules on this phone</span>
-            {online && (
-              <a href="/api/auth/login" class="state-layer flex min-h-11 shrink-0 items-center rounded-full px-3 font-medium text-primary">
-                Sign in with Google
-              </a>
-            )}
-          </>
-        )}
-      </div>
-      <p class="mt-1 text-xs leading-5 text-muted">Only today's and the last workday's note text and tags are sent, and only when you tap Build.</p>
+      <p class="mt-3 text-xs leading-5 text-muted">Built on this phone from your tags. No AI, nothing leaves the device.</p>
     </section>
   );
 }

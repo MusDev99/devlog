@@ -1,6 +1,6 @@
 # 🎙️ DevLog
 
-Jot work notes on your phone during the day, get a ready-to-paste standup each morning. Offline-first PWA, notes stay on your device.
+Jot work notes on your phone during the day, get a ready-to-paste standup each morning. Offline-first PWA, notes stay on your device. Free to run: a static site with no server, no AI and no API keys.
 
 ## ✨ Features
 
@@ -8,10 +8,10 @@ Jot work notes on your phone during the day, get a ready-to-paste standup each m
 |---|---|
 | 📱 Installable PWA, launches offline | ✅ v0.1 |
 | 📝 Quick notes (text + voice), tagged done / doing / blocker, offline | ✅ v0.2 |
-| 🤖 AI standup (yesterday / today / blockers) with rule-based fallback, one-tap copy | ✅ v0.3 |
-| 🔒 Google sign-in with an allow-list on the AI, rate limit | ✅ v0.4 |
+| 📋 Standup (yesterday / today / blockers) built on the phone from tags, one-tap copy | ✅ v0.3 |
 | 📅 Friday recap (shipped / in progress / blockers), offline, one-tap copy | ✅ v0.5 |
 | 🚦 Post-deploy smoke check, Laws of UX review | ✅ v1.0 |
+| 💸 No AI, no sign-in, no API keys: static site, free to host | 🛠️ next |
 
 ## 🚀 Quick start
 
@@ -19,7 +19,7 @@ Jot work notes on your phone during the day, get a ready-to-paste standup each m
 npm ci
 npm run dev       # http://localhost:5173
 npm run verify    # typecheck + tests + build
-npm run smoke -- https://<deploy>   # post-deploy checks (works with AI on or off)
+npm run smoke -- https://<deploy>   # post-deploy checks (headers, PWA files, no server functions)
 ```
 
 Node 22.18+ (tests run TypeScript directly with `node --test`).
@@ -31,11 +31,8 @@ Node 22.18+ (tests run TypeScript directly with `node --test`).
 | `src/App.tsx` | Main screen |
 | `src/components/` | `Composer` (add a note), `NoteList` (today, grouped by tag), `StandupCard`, `RecapCard` (week recap), `Icon` (inline Material icons) |
 | `src/styles.css` | Material Design 3 colour roles as Tailwind `@theme` tokens, `state-layer` utility |
-| `api/standup.ts` | Vercel function: session check, limits, grounding |
-| `api/_lib/standup-model.ts` | The one Claude call (shared with `npm run eval`) |
-| `api/auth/*`, `api/_lib/auth.ts` | Google sign-in (OIDC + PKCE), signed session cookie, allow-list |
-| `tests/golden/` | Standup golden set (10 note days), used by tests and `npm run eval` |
-| `src/lib/` | Pure logic (`notes.ts`, `standup.ts`, `recap.ts`, `today.ts`), `standup-client.ts` (AI call + fallback), `db.ts` (IndexedDB, the only storage module), `speech.ts`, PWA helpers |
+| `tests/golden/` | Standup golden set (10 note days): the rules keep every blocker and invent nothing |
+| `src/lib/` | Pure logic (`notes.ts`, `standup.ts`, `recap.ts`, `today.ts`), `db.ts` (IndexedDB, the only storage module), `speech.ts`, PWA helpers |
 | `public/sw.js`, `public/sw-policy.js` | Service worker and its tested routing rules |
 | `build/sw-assets.ts` | Vite plugin: list of hashed files to precache |
 | `vercel.json` | Security headers, CSP, cache headers |
@@ -54,23 +51,8 @@ Node 22.18+ (tests run TypeScript directly with `node --test`).
 
 1. Import the repo in Vercel (framework preset: Vite, it reads `vercel.json`).
 2. Production branch `main`; every PR gets a preview URL.
-3. Environment variables (Production and Preview), see `.env.example`:
-
-| Variable | Required | What |
-|---|---|---|
-| `ANTHROPIC_API_KEY` | for AI | Claude API key |
-| `AUTH_SECRET` | for AI | 32+ random characters (`openssl rand -base64 48`), signs the session cookie |
-| `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | for AI | Google OAuth client (Web application) |
-| `APP_URL` | for AI | Public origin, e.g. `https://devlog.vercel.app` (no trailing slash) |
-| `ALLOWED_EMAILS` | for AI | Comma-separated Google accounts allowed to use the AI |
-| `STANDUP_MODEL` | no | Model override (default `claude-opus-5-5`) |
-
-Without them the app still works: `/api/standup` returns 503 and standups use the tag rules.
-
-4. Google Cloud → APIs & Services → Credentials → OAuth client → **Authorised redirect URI** `<APP_URL>/api/auth/callback` (one per deploy URL you sign in on).
-5. Open the app → **Sign in with Google** under the standup card. Signed out, the app keeps working with rules.
-6. Check the deploy: `npm run smoke -- https://<deploy>` (6 checks, exits 1 on failure).
-7. Live eval (calls Claude directly, costs credit): `ANTHROPIC_API_KEY=... npm run eval`.
+3. No environment variables, keys or functions: Vercel serves `dist/` as static files, which fits the free Hobby plan. Any static host works (Netlify, Cloudflare Pages, GitHub Pages); copy the headers from `vercel.json`.
+4. Check the deploy: `npm run smoke -- https://<deploy>` (3 checks, exits 1 on failure).
 
 ## 🤖 Agent team
 
