@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-11-01 21:37 · v1.0.0
+
+- feat: `npm run smoke -- <url>` post-deploy check (security headers, PWA files, session/standup refuse anonymous and cross-site calls, sign-in uses PKCE); passes with AI on or off
+- docs: Laws of UX and accessibility review of every screen at 375px, release checklist (`docs/features/release-v1/`)
+- chore: version 1.0.0: offline notes, AI standup with Google sign-in, Friday recap
+
 ## 2026-10-31 22:19 · v0.5.0
 
 - feat(recap): Friday recap card (shipped / in progress / blockers, days logged) built on the phone from this week's notes, works offline
