@@ -1,31 +1,17 @@
-import { useEffect, useState } from 'preact/hooks';
-import { notesBetween } from '../lib/db.ts';
+import { useState } from 'preact/hooks';
 import type { Note } from '../lib/notes.ts';
-import { formatRecap, isRecapDay, rangeLabel, weekRange, weekRecap, type Recap } from '../lib/recap.ts';
+import { formatRecap, isRecapDay, rangeLabel, weekRange, weekRecap } from '../lib/recap.ts';
 import { Icon } from './Icon.tsx';
 
-type Props = { today: string; notes: Note[]; onToast: (message: string) => void };
+type Props = { today: string; cards: Note[]; onToast: (message: string) => void };
 
-/** Friday recap from this week's notes, built on the phone (works offline). */
-export function RecapCard({ today, notes, onToast }: Props) {
+/** Friday recap from cards changed this week, built on the phone (works offline). */
+export function RecapCard({ today, cards, onToast }: Props) {
   // Hick: open by itself only on Friday and the weekend; other days it is one tap away.
   const [open, setOpen] = useState(() => isRecapDay(today));
-  const [recap, setRecap] = useState<Recap | null>(null);
-  const [failed, setFailed] = useState(false);
   const { start, end } = weekRange(today);
   const label = rangeLabel(start, end);
-
-  useEffect(() => {
-    if (!open) return;
-    let live = true;
-    notesBetween(start, end)
-      .then((week) => live && (setRecap(weekRecap(week)), setFailed(false)))
-      .catch(() => live && setFailed(true));
-    return () => {
-      live = false;
-    };
-    // Today's notes are a dependency so the recap follows notes added or deleted on this screen.
-  }, [open, start, end, notes]);
+  const recap = open ? weekRecap(cards.filter((c) => c.day >= start && c.day <= end)) : null;
 
   async function copy() {
     if (!recap) return;
@@ -73,13 +59,7 @@ export function RecapCard({ today, notes, onToast }: Props) {
         </span>
       </div>
 
-      {failed && (
-        <p role="alert" class="mt-3 text-error">
-          Could not read this week's notes from this device.
-        </p>
-      )}
-      {!recap && !failed && <div class="mt-4 h-16 animate-pulse rounded-2xl bg-surface-highest" aria-label="Loading recap" />}
-      {recap && recap.activeDays === 0 && <p class="mt-3 leading-6 text-muted">No notes this week yet. Your recap fills in as you log.</p>}
+      {recap && recap.activeDays === 0 && <p class="mt-3 leading-6 text-muted">Nothing moved this week yet. Your recap fills in as you work the board.</p>}
       {recap && recap.activeDays > 0 && (
         <div aria-live="polite" class="mt-4 grid gap-4">
           {sections.map(([title, items]) => (

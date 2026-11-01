@@ -1,6 +1,6 @@
 # 🎙️ DevLog
 
-Jot work notes on your phone during the day, get a ready-to-paste standup each morning. Offline-first PWA, notes stay on your device. Free to run: a static site with no server, no AI and no API keys.
+A personal kanban board on your phone (To do / Doing / Blocked / Done) that turns into a ready-to-paste standup each morning. Offline-first PWA, notes stay on your device. Free to run: a static site with no server, no AI and no API keys.
 
 ## ✨ Features
 
@@ -11,7 +11,8 @@ Jot work notes on your phone during the day, get a ready-to-paste standup each m
 | 📋 Standup (yesterday / today / blockers) built on the phone from tags, one-tap copy | ✅ v0.3 |
 | 📅 Friday recap (shipped / in progress / blockers), offline, one-tap copy | ✅ v0.5 |
 | 🚦 Post-deploy smoke check, Laws of UX review | ✅ v1.0 |
-| 💸 No AI, no sign-in, no API keys: static site, free to host | 🛠️ next |
+| 💸 No AI, no sign-in, no API keys: static site, free to host | ✅ v2.0 |
+| 🗂️ Kanban board: To do / Doing / Blocked / Done, drag and drop on desktop, one-tap moves on the phone | ✅ v2.0 |
 
 ## 🚀 Quick start
 
@@ -29,10 +30,10 @@ Node 22.18+ (tests run TypeScript directly with `node --test`).
 | Path | What |
 |---|---|
 | `src/App.tsx` | Main screen |
-| `src/components/` | `Composer` (add a note), `NoteList` (today, grouped by tag), `StandupCard`, `RecapCard` (week recap), `Icon` (inline Material icons) |
+| `src/components/` | `Board` (kanban columns and cards), `Composer` (add a card), `StandupCard`, `RecapCard` (week recap), `Icon` (inline Material icons) |
 | `src/styles.css` | Material Design 3 colour roles as Tailwind `@theme` tokens, `state-layer` utility |
 | `tests/golden/` | Standup golden set (10 note days): the rules keep every blocker and invent nothing |
-| `src/lib/` | Pure logic (`notes.ts`, `standup.ts`, `recap.ts`, `today.ts`), `db.ts` (IndexedDB, the only storage module), `speech.ts`, PWA helpers |
+| `src/lib/` | Pure logic (`notes.ts`, `board.ts`, `standup.ts`, `recap.ts`, `today.ts`), `db.ts` (IndexedDB, the only storage module), `speech.ts`, PWA helpers |
 | `public/sw.js`, `public/sw-policy.js` | Service worker and its tested routing rules |
 | `build/sw-assets.ts` | Vite plugin: list of hashed files to precache |
 | `vercel.json` | Security headers, CSP, cache headers |
@@ -42,7 +43,9 @@ Node 22.18+ (tests run TypeScript directly with `node --test`).
 
 ## 💡 Tips
 
-- Start a note with `b:` (blocker), `done:` or `wip:` to tag it without tapping.
+- New cards go to the selected column. Start with `todo:`, `wip:`, `b:` (blocked) or `done:` to send one elsewhere.
+- Tap → on a card to move it on (To do → Doing → Done, Blocked → Doing), or ⋮ for any column or Delete. On a wide screen, drag cards between columns.
+- Done cards older than a week fold into **Earlier**.
 - Start the day with **Build standup**, then **Copy** into your team chat.
 - On Friday the **Friday recap** opens by itself (shipped / in progress / blockers for the week); other days tap **Week so far**.
 - Voice uses the browser's own speech service (Chrome/Safari); the mic button hides where it is missing.

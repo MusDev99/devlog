@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-DevLog: offline-first mobile PWA. Jot work notes during the day (text or voice, tagged done / doing / blocker) and get a standup each morning plus a Friday recap, built on the phone from tags. Static site: no server functions, no AI, no API keys. Vite 7 + Preact 10 + Tailwind 4 + strict TypeScript, deployed on Vercel. Process and standards: [Agentic Coding Style](https://musdev99.github.io/agentic-coding-style) and [BRANCHING.md](https://github.com/MusDev99/agentic-coding-style/blob/main/BRANCHING.md).
+DevLog: offline-first mobile PWA. A personal kanban board (To do / Doing / Blocked / Done; add cards by text or voice) that builds a standup each morning plus a Friday recap, on the phone. Static site: no server functions, no AI, no API keys. Vite 7 + Preact 10 + Tailwind 4 + strict TypeScript, deployed on Vercel. Process and standards: [Agentic Coding Style](https://musdev99.github.io/agentic-coding-style) and [BRANCHING.md](https://github.com/MusDev99/agentic-coding-style/blob/main/BRANCHING.md).
 
 ## Commands
 
@@ -20,10 +20,11 @@ Plan (goal, files, risks; owner approves) → Gather (read code/docs first) → 
 ## Architecture
 
 - `src/App.tsx` composes the screen; pure logic lives in `src/lib/*.ts` with tests in `tests/` (inject time, never read the clock inside pure code).
-- **Notes stay on the device**: IndexedDB `devlog` / store `notes` (keyPath `id`, index `day`), accessed only through `src/lib/db.ts`. Rows are validated with `isNote` on read (corrupt rows skipped). Note rules (tags, prefixes, max length) live in `src/lib/notes.ts`; never hardcode tags elsewhere. `day` = `YYYY-MM-DD` in the user's zone at write time, `createdAt` = ISO UTC. No server storage, no analytics.
+- **Cards stay on the device**: a card is a `Note`; its `tag` is its column. IndexedDB `devlog` / store `notes` (keyPath `id`, index `day`), accessed only through `src/lib/db.ts` (`allNotes` loads the whole board). Rows are validated with `isNote` on read (corrupt rows skipped). Card rules (`TAGS` in column order, prefixes, `NEXT_TAG`, `moveNote`, max length) live in `src/lib/notes.ts`; never hardcode tags elsewhere. `day` = `YYYY-MM-DD` in the user's zone of the last change (added or moved), `createdAt` / `movedAt` = ISO UTC. No server storage, no analytics.
+- **Board**: `src/lib/board.ts` (pure, tested: column order, newest change first, Done older than 7 days folds into Earlier) + `Board.tsx`. Phone: one column behind count tabs; ≥ 768px: four columns with drag and drop. Every move also has buttons (next column, menu) so it never needs a drag.
 - **PWA**: `public/sw.js` + pure routing rules in `public/sw-policy.js` (tested). `/assets/*` and `/icons/*` cache-first, pages network-first with cached shell offline, `/api/*` (none today) and non-GET never cached. `build/sw-assets.ts` writes `sw-assets.json` (hashed files to precache). New shell file → add to `SHELL` in `sw.js` (test fails otherwise). Bump `VERSION` when caching rules change.
-- **Standup**: `ruleStandup` in `src/lib/standup.ts` (pure, tested) + `StandupCard.tsx`, from the previous workday's and today's notes. No AI, no network: nothing leaves the device.
-- **Friday recap**: `src/lib/recap.ts` (pure, tested) + `RecapCard.tsx`; Monday → today from `notesBetween` in `db.ts`. Rules only, never sent to the server.
+- **Standup**: `ruleStandup(cards, today)` in `src/lib/standup.ts` (pure, tested) + `StandupCard.tsx`. Yesterday = done/doing cards changed on the last earlier active day; Today = done today + everything in Doing; Blockers = everything in Blocked. No AI, no network: nothing leaves the device.
+- **Friday recap**: `src/lib/recap.ts` (pure, tested) + `RecapCard.tsx`; cards changed Monday → today. Rules only, never sent to the server.
 - `src/` and `tests/` import with `.ts` extensions (Node strip-types). No `api/` folder: adding a server function, AI call or API key is a product decision, not a refactor.
 - Golden set: `tests/golden/standup-cases.json`; unit tests check the rules keep every blocker and invent nothing.
 

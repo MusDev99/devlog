@@ -1,5 +1,14 @@
 # Changelog
 
+## 2026-11-02 00:30
+
+- feat(board): kanban board replaces the day list: To do / Doing / Blocked / Done, one persistent board
+- feat(board): phone shows one column behind count tabs; wide screens show four columns with drag and drop
+- feat(board): one-tap "next column" button and a menu (any column, Delete) on every card; Undo for moves and deletes
+- feat(board): Done cards older than 7 days fold into Earlier; new cards go to the selected column, `todo:` prefix added
+- feat: standup and Friday recap are built from the board (Today = done today + still in Doing, Blockers = Blocked column)
+- fix: text typed while a card is saving is no longer wiped
+
 ## 2026-11-01 23:00
 
 - feat!: remove the AI standup, Google sign-in and every `api/` function; the standup is built on the phone from tags

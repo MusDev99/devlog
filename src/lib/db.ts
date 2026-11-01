@@ -1,6 +1,6 @@
 import { isNote, type Note } from './notes.ts';
 
-/** IndexedDB access. Notes never leave the device; this is the only module that touches storage. */
+/** IndexedDB access. Cards never leave the device; this is the only module that touches storage. */
 const DB_NAME = 'devlog';
 const STORE = 'notes';
 
@@ -33,8 +33,9 @@ async function store(mode: IDBTransactionMode): Promise<IDBObjectStore> {
   return (await open()).transaction(STORE, mode).objectStore(STORE);
 }
 
-export async function notesForDay(day: string): Promise<Note[]> {
-  const rows: unknown[] = await done((await store('readonly')).index('day').getAll(day));
+/** Every card on the board. Corrupt rows are skipped. */
+export async function allNotes(): Promise<Note[]> {
+  const rows: unknown[] = await done((await store('readonly')).getAll());
   return rows.filter(isNote);
 }
 
@@ -44,18 +45,4 @@ export async function saveNote(note: Note): Promise<void> {
 
 export async function deleteNote(id: string): Promise<void> {
   await done((await store('readwrite')).delete(id));
-}
-
-/** Notes of the most recent day before `day` that has any (the "yesterday" of a standup, weekends skipped). */
-export async function previousWorkday(day: string): Promise<Note[]> {
-  const index = (await store('readonly')).index('day');
-  const cursor = await done(index.openCursor(IDBKeyRange.upperBound(day, true), 'prev'));
-  if (!cursor) return [];
-  return notesForDay(String(cursor.key));
-}
-
-/** Every note from `start` to `end` inclusive (`YYYY-MM-DD` keys sort as dates). */
-export async function notesBetween(start: string, end: string): Promise<Note[]> {
-  const rows: unknown[] = await done((await store('readonly')).index('day').getAll(IDBKeyRange.bound(start, end)));
-  return rows.filter(isNote);
 }
