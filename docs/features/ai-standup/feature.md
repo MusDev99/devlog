@@ -10,7 +10,7 @@ Roadmap slice 3. Gate: golden set passes, no invented items, fallback tested.
 | Rules only | ❌ no merging or rewording |
 | **AI with grounded output + rules fallback** | ✅ same pattern as task-dashboard Smart assign |
 
-Access control for now is a shared passcode (env `DEVLOG_PASSCODE`). Week 4 replaces it with Google sign-in + allow-list, as agreed in the spec.
+Access control started as a shared passcode; Week 4 replaced it with Google sign-in + allow-list (see `docs/features/google-sign-in/`).
 
 ## Acceptance criteria
 
@@ -38,7 +38,7 @@ Access control for now is a shared passcode (env `DEVLOG_PASSCODE`). Week 4 repl
 
 | Risk | Mitigation |
 |---|---|
-| A01 Access | Passcode required, fail closed (503) when unset |
+| A01 Access | Google sign-in + allow-list (Week 4), fail closed (503) when unset |
 | A03 Injection | Zod-validated input, notes passed as data, grounded output, React text rendering |
 | A04 Design | Rate limit, size caps, `effort: low`, 20 s timeout, 1 retry |
 | A05 Misconfig | Generic client errors; details in server logs only |
