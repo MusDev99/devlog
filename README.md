@@ -27,7 +27,8 @@ Node 22.18+ (tests run TypeScript directly with `node --test`).
 | Path | What |
 |---|---|
 | `src/App.tsx` | Main screen |
-| `src/components/` | `Composer` (add a note), `NoteList` (today, grouped by tag), `StandupCard` |
+| `src/components/` | `Composer` (add a note), `NoteList` (today, grouped by tag), `StandupCard`, `Icon` (inline Material icons) |
+| `src/styles.css` | Material Design 3 colour roles as Tailwind `@theme` tokens, `state-layer` utility |
 | `api/standup.ts` | Vercel function: passcode, limits, Claude call, grounding |
 | `tests/golden/` | Standup golden set (10 note days), used by tests and `npm run eval` |
 | `src/lib/` | Pure logic (`notes.ts`, `standup.ts`, `today.ts`), `standup-client.ts` (AI call + fallback), `db.ts` (IndexedDB, the only storage module), `speech.ts`, PWA helpers |

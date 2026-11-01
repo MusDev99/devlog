@@ -1,5 +1,10 @@
 # Changelog
 
+## 2026-11-01 21:30
+
+- feat(ui): Material Design 3 redesign in Tailwind (colour-role tokens, state layers, filter chips, filled text fields, snackbar, bottom-sheet composer)
+- feat(ui): inline Material icons (`src/components/Icon.tsx`), no new host in the CSP
+
 ## 2026-10-31 15:15
 
 - ci: `branch-cleanup.yml` deletes a PR's branch after it is merged (skips forks, `main`, stacked bases)
