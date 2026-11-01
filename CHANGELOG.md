@@ -1,9 +1,29 @@
 # Changelog
 
-## 2026-11-01 21:30
+## 2026-11-01 22:00
 
 - feat(ui): Material Design 3 redesign in Tailwind (colour-role tokens, state layers, filter chips, filled text fields, snackbar, bottom-sheet composer)
 - feat(ui): inline Material icons (`src/components/Icon.tsx`), no new host in the CSP
+
+## 2026-11-01 21:37 · v1.0.0
+
+- feat: `npm run smoke -- <url>` post-deploy check (security headers, PWA files, session/standup refuse anonymous and cross-site calls, sign-in uses PKCE); passes with AI on or off
+- docs: Laws of UX and accessibility review of every screen at 375px, release checklist (`docs/features/release-v1/`)
+- chore: version 1.0.0: offline notes, AI standup with Google sign-in, Friday recap
+
+## 2026-10-31 22:19 · v0.5.0
+
+- feat(recap): Friday recap card (shipped / in progress / blockers, days logged) built on the phone from this week's notes, works offline
+- feat(recap): opens by itself Friday to Sunday; "Week so far" row on other days; one-tap copy
+- test: week range, recap rules and copy text
+
+## 2026-10-31 22:16 · v0.4.0
+
+- feat(auth): Google sign-in (OIDC + PKCE) with an email allow-list replaces the shared passcode for the AI standup
+- feat: account line on the standup card ("AI on · email" / Sign in with Google / Sign out) and a sign-in result toast
+- security: signed `HttpOnly` cookies, same-origin check on cookie-authenticated requests, per-account rate limit, fail closed without config
+- test: auth tests (ID token checks, cookie tampering, PKCE vector, limiter); `npm run eval` now calls Claude directly
+- docs: Google OAuth setup, new environment variables, OWASP audit
 
 ## 2026-10-31 15:15
 

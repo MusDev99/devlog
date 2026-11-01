@@ -53,3 +53,9 @@ export async function previousWorkday(day: string): Promise<Note[]> {
   if (!cursor) return [];
   return notesForDay(String(cursor.key));
 }
+
+/** Every note from `start` to `end` inclusive (`YYYY-MM-DD` keys sort as dates). */
+export async function notesBetween(start: string, end: string): Promise<Note[]> {
+  const rows: unknown[] = await done((await store('readonly')).index('day').getAll(IDBKeyRange.bound(start, end)));
+  return rows.filter(isNote);
+}

@@ -1,8 +1,8 @@
-import { useState } from 'preact/hooks';
+import { useEffect, useState } from 'preact/hooks';
 import { previousWorkday } from '../lib/db.ts';
 import type { Note } from '../lib/notes.ts';
 import { formatStandup } from '../lib/standup.ts';
-import { buildStandup, loadPasscode, savePasscode, type StandupResult } from '../lib/standup-client.ts';
+import { buildStandup, fetchSession, signOut, type StandupResult } from '../lib/standup-client.ts';
 import { Icon } from './Icon.tsx';
 
 type Props = { today: string; notes: Note[]; online: boolean; onToast: (message: string) => void };
@@ -11,13 +11,17 @@ type Props = { today: string; notes: Note[]; online: boolean; onToast: (message:
 export function StandupCard({ today, notes, online, onToast }: Props) {
   const [result, setResult] = useState<StandupResult | null>(null);
   const [busy, setBusy] = useState(false);
-  const [passcode, setPasscode] = useState(loadPasscode);
+  const [account, setAccount] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (online) fetchSession().then(setAccount);
+  }, [online]);
 
   async function generate() {
     setBusy(true);
     try {
       const previous = await previousWorkday(today);
-      setResult(await buildStandup(previous, notes, passcode, online));
+      setResult(await buildStandup(previous, notes, account !== null, online));
     } catch {
       onToast('Could not read notes from this device');
     } finally {
@@ -95,31 +99,35 @@ export function StandupCard({ today, notes, online, onToast }: Props) {
         )}
       </div>
 
-      <details class="group mt-3 text-sm text-muted">
-        <summary class="state-layer -mx-2 flex min-h-11 cursor-pointer list-none items-center justify-between rounded-full px-2 font-medium [&::-webkit-details-marker]:hidden">
-          AI settings
-          <Icon name="expand" class="size-6 transition-transform duration-200 group-open:rotate-180" />
-        </summary>
-        {/* Material filled text field: label inside the container, indicator line underneath. */}
-        <div class="mt-2 rounded-t-lg border-b border-outline bg-surface-highest px-4 pt-2 pb-1 focus-within:border-b-2 focus-within:border-primary">
-          <label for="passcode" class="block text-xs text-muted">
-            Passcode (from your Vercel settings)
-          </label>
-          <input
-            id="passcode"
-            type="password"
-            autoComplete="off"
-            value={passcode}
-            onChange={(e) => {
-              const value = e.currentTarget.value.trim();
-              setPasscode(value);
-              savePasscode(value);
-            }}
-            class="min-h-11 w-full bg-transparent text-base text-fg outline-none"
-          />
-        </div>
-        <p class="mt-2 px-4 text-xs leading-5">Only your notes' text and tags are sent to the AI when you tap Build. Without a passcode, standups use tag rules on this phone.</p>
-      </details>
+      {/* Account line: a Material list row with a text button as its trailing action. */}
+      <div class="mt-3 flex min-h-11 items-center justify-between gap-2 text-sm text-muted">
+        {account ? (
+          <>
+            <span class="min-w-0 truncate">AI on · {account}</span>
+            <button
+              type="button"
+              class="state-layer min-h-11 shrink-0 rounded-full px-3 font-medium text-primary"
+              onClick={async () => {
+                await signOut().catch(() => undefined);
+                setAccount(null);
+                onToast('Signed out of AI');
+              }}
+            >
+              Sign out
+            </button>
+          </>
+        ) : (
+          <>
+            <span>AI off · rules on this phone</span>
+            {online && (
+              <a href="/api/auth/login" class="state-layer flex min-h-11 shrink-0 items-center rounded-full px-3 font-medium text-primary">
+                Sign in with Google
+              </a>
+            )}
+          </>
+        )}
+      </div>
+      <p class="mt-1 text-xs leading-5 text-muted">Only today's and the last workday's note text and tags are sent, and only when you tap Build.</p>
     </section>
   );
 }

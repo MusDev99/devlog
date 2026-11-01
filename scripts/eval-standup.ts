@@ -1,36 +1,27 @@
 /**
- * Live golden-set eval for the AI standup (costs API credit, not run in CI).
- *   DEVLOG_URL=https://<deploy> DEVLOG_PASSCODE=... npm run eval
- * Pass criteria per case: HTTP 200, valid standup, zero dropped (no invented or mis-cited items),
- * and every blocker note present.
+ * Live golden-set eval for the AI standup: calls Claude directly (costs API credit, not run in CI).
+ *   ANTHROPIC_API_KEY=... npm run eval
+ * Pass per case: usable output, zero dropped items (nothing invented or mis-cited), every blocker kept.
  */
 import { readFileSync } from 'node:fs';
-import type { PromptNote } from '../src/lib/standup.ts';
+import { generateStandup } from '../api/_lib/standup-model';
+import type { PromptNote } from '../src/lib/standup';
 
-const url = process.env.DEVLOG_URL;
-const passcode = process.env.DEVLOG_PASSCODE;
-if (!url || !passcode) {
-  console.error('Set DEVLOG_URL and DEVLOG_PASSCODE');
+if (!process.env.ANTHROPIC_API_KEY) {
+  console.error('Set ANTHROPIC_API_KEY');
   process.exit(2);
 }
 
-const cases = JSON.parse(readFileSync(new URL('../tests/golden/standup-cases.json', import.meta.url), 'utf8')) as {
-  name: string;
-  notes: PromptNote[];
-}[];
+const cases = JSON.parse(readFileSync('tests/golden/standup-cases.json', 'utf8')) as { name: string; notes: PromptNote[] }[];
 
 let failed = 0;
 for (const c of cases) {
-  const res = await fetch(new URL('/api/standup', url), {
-    method: 'POST',
-    headers: { 'content-type': 'application/json', 'x-devlog-passcode': passcode },
-    body: JSON.stringify({ notes: c.notes }),
-  });
-  const body = (await res.json().catch(() => ({}))) as { standup?: { blockers: string[] }; dropped?: number };
-  const blockerCount = c.notes.filter((n) => n.tag === 'blocker').length;
-  const ok = res.status === 200 && body.dropped === 0 && (body.standup?.blockers.length ?? -1) >= blockerCount;
+  const result = await generateStandup(c.notes).catch(() => null);
+  const blockerNotes = c.notes.filter((n) => n.tag === 'blocker').length;
+  const ok = result !== null && result.dropped === 0 && result.standup.blockers.length >= blockerNotes;
   if (!ok) failed += 1;
-  console.log(`${ok ? '✅' : '❌'} ${c.name} (status ${res.status}, dropped ${body.dropped ?? '?'})`);
+  console.log(`${ok ? '✅' : '❌'} ${c.name} (dropped ${result?.dropped ?? 'n/a'})`);
+  if (result) console.log(`   ${JSON.stringify(result.standup)}`);
 }
 console.log(`${cases.length - failed}/${cases.length} passed`);
 process.exit(failed ? 1 : 0);
