@@ -1,27 +1,13 @@
 import { useState } from 'preact/hooks';
-import { previousWorkday } from '../lib/db.ts';
 import type { Note } from '../lib/notes.ts';
 import { formatStandup, ruleStandup, type Standup } from '../lib/standup.ts';
 import { Icon } from './Icon.tsx';
 
-type Props = { today: string; notes: Note[]; onToast: (message: string) => void };
+type Props = { today: string; cards: Note[]; onToast: (message: string) => void };
 
-/** Standup on demand, built on this phone from tags. Nothing is sent anywhere. */
-export function StandupCard({ today, notes, onToast }: Props) {
+/** Standup on demand, built on this phone from the board. Nothing is sent anywhere. */
+export function StandupCard({ today, cards, onToast }: Props) {
   const [result, setResult] = useState<Standup | null>(null);
-  const [busy, setBusy] = useState(false);
-
-  async function generate() {
-    setBusy(true);
-    try {
-      const previous = await previousWorkday(today);
-      setResult(ruleStandup(previous, notes));
-    } catch {
-      onToast('Could not read notes from this device');
-    } finally {
-      setBusy(false);
-    }
-  }
 
   async function copy() {
     if (!result) return;
@@ -45,7 +31,7 @@ export function StandupCard({ today, notes, onToast }: Props) {
     <section aria-labelledby="standup-title" class="rounded-3xl border border-line bg-surface-low p-5">
       <div class="flex items-center justify-between gap-3">
         <h2 id="standup-title" class="flex items-center gap-2 text-[1.375rem] leading-7">
-          <Icon name="sparkle" class="size-6 text-primary" />
+          <Icon name="standup" class="size-6 text-primary" />
           Standup
         </h2>
       </div>
@@ -62,19 +48,18 @@ export function StandupCard({ today, notes, onToast }: Props) {
           ))}
         </div>
       ) : (
-        <p class="mt-3 leading-6 text-muted">Builds yesterday / today / blockers from your last workday and today's notes.</p>
+        <p class="mt-3 leading-6 text-muted">Builds yesterday / today / blockers from your board, ready to paste into your team chat.</p>
       )}
 
       <div class="mt-5 flex gap-2">
         {/* Von Restorff: tonal and text buttons here, the composer's Add stays the one filled primary. */}
         <button
           type="button"
-          onClick={generate}
-          disabled={busy}
-          class="state-layer inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-full bg-primary-container px-6 text-sm font-medium text-on-primary-container disabled:opacity-60"
+          onClick={() => setResult(ruleStandup(cards, today))}
+          class="state-layer inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-full bg-primary-container px-6 text-sm font-medium text-on-primary-container"
         >
-          <Icon name={result ? 'refresh' : 'sparkle'} class="size-[18px]" />
-          {busy ? 'Building…' : result ? 'Rebuild' : 'Build standup'}
+          <Icon name={result ? 'refresh' : 'standup'} class="size-[18px]" />
+          {result ? 'Rebuild' : 'Build standup'}
         </button>
         {result && (
           <button
@@ -88,7 +73,7 @@ export function StandupCard({ today, notes, onToast }: Props) {
         )}
       </div>
 
-      <p class="mt-3 text-xs leading-5 text-muted">Built on this phone from your tags. No AI, nothing leaves the device.</p>
+      <p class="mt-3 text-xs leading-5 text-muted">Built on this device from your cards. Nothing is sent anywhere.</p>
     </section>
   );
 }
