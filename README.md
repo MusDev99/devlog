@@ -29,7 +29,8 @@ Node 22.18+ (tests run TypeScript directly with `node --test`).
 | Path | What |
 |---|---|
 | `src/App.tsx` | Main screen |
-| `src/components/` | `Composer` (add a note), `NoteList` (today, grouped by tag), `StandupCard`, `RecapCard` (week recap) |
+| `src/components/` | `Composer` (add a note), `NoteList` (today, grouped by tag), `StandupCard`, `RecapCard` (week recap), `Icon` (inline Material icons) |
+| `src/styles.css` | Material Design 3 colour roles as Tailwind `@theme` tokens, `state-layer` utility |
 | `api/standup.ts` | Vercel function: session check, limits, grounding |
 | `api/_lib/standup-model.ts` | The one Claude call (shared with `npm run eval`) |
 | `api/auth/*`, `api/_lib/auth.ts` | Google sign-in (OIDC + PKCE), signed session cookie, allow-list |

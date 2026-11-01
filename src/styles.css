@@ -1,16 +1,59 @@
 @import 'tailwindcss';
 
-/* Design tokens: dark theme first. Components use these via the @theme names, never raw hex. */
+/*
+ * Design tokens: Material Design 3 colour roles, dark scheme, seeded from the DevLog coral.
+ * Components use these via the @theme names, never raw hex.
+ */
 @theme {
   --color-bg: #0e1218;
-  --color-surface: #161c25;
-  --color-line: #2a3340;
+  --color-surface-low: #141a22;
+  --color-surface: #182029;
+  --color-surface-high: #1f2731;
+  --color-surface-highest: #2a333e;
+  --color-line: #38424f;
+  --color-outline: #8994a5;
   --color-fg: #e8ecf2;
-  --color-muted: #93a0b2;
-  --color-accent: #ff5a5f;
-  --color-ok: #4cc27a;
-  --color-warn: #e5a23c;
-  --font-sans: 'IBM Plex Sans', 'Segoe UI', system-ui, sans-serif;
+  --color-muted: #a3aebf;
+  --color-primary: #ff8a8d;
+  --color-on-primary: #3b0709;
+  --color-primary-container: #5a2226;
+  --color-on-primary-container: #ffdad8;
+  --color-inverse: #e8ecf2;
+  --color-on-inverse: #1f2731;
+  --color-inverse-primary: #b3262f;
+  --color-ok: #6fd394;
+  --color-warn: #f0b85a;
+  --color-error: #ffb4ab;
+  --font-sans: 'Roboto', 'IBM Plex Sans', 'Segoe UI', system-ui, sans-serif;
+  --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+}
+
+/* Material state layer: a currentColor overlay at 8% on hover, 12% on focus and press. */
+@utility state-layer {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  &::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    border-radius: inherit;
+    background: currentColor;
+    opacity: 0;
+    transition: opacity 150ms var(--ease-standard);
+    pointer-events: none;
+  }
+  &:hover::after {
+    opacity: 0.08;
+  }
+  &:focus-visible::after,
+  &:active::after {
+    opacity: 0.12;
+  }
+  &:disabled::after {
+    opacity: 0;
+  }
 }
 
 html {
@@ -27,9 +70,12 @@ body {
   -webkit-tap-highlight-color: transparent;
 }
 
-:focus-visible {
-  outline: 3px solid var(--color-accent);
-  outline-offset: 2px;
+/* In the base layer so a field container can move the ring onto itself with outline-none. */
+@layer base {
+  :focus-visible {
+    outline: 3px solid var(--color-primary);
+    outline-offset: 2px;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

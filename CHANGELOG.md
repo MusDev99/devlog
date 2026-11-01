@@ -1,5 +1,10 @@
 # Changelog
 
+## 2026-11-01 22:00
+
+- feat(ui): Material Design 3 redesign in Tailwind (colour-role tokens, state layers, filter chips, filled text fields, snackbar, bottom-sheet composer)
+- feat(ui): inline Material icons (`src/components/Icon.tsx`), no new host in the CSP
+
 ## 2026-11-01 21:37 · v1.0.0
 
 - feat: `npm run smoke -- <url>` post-deploy check (security headers, PWA files, session/standup refuse anonymous and cross-site calls, sign-in uses PKCE); passes with AI on or off
