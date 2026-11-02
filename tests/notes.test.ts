@@ -1,6 +1,22 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { creditPomodoro, formatDuration, isNote, MAX_NOTE_LENGTH, moveNote, nextSize, parseDraft, placeOf, validateDraft, type Note } from '../src/lib/notes.ts';
+import {
+  elapsedMs,
+  formatClock,
+  formatDuration,
+  isNote,
+  MAX_NOTE_LENGTH,
+  moveNote,
+  nextSize,
+  parseDraft,
+  placeOf,
+  resetTimer,
+  runMs,
+  startTimer,
+  stopTimer,
+  validateDraft,
+  type Note,
+} from '../src/lib/notes.ts';
 
 test('parseDraft trims, collapses spaces and keeps the picked tag', () => {
   assert.deepEqual(parseDraft('  fixed   the  pipeline ', 'doing'), { text: 'fixed the pipeline', tag: 'doing' });
@@ -33,11 +49,49 @@ test('nextSize cycles S → M → L → S', () => {
   assert.deepEqual([nextSize(1), nextSize(3), nextSize(5)], [3, 5, 1]);
 });
 
-test('creditPomodoro adds a 🍅 and the focus minutes', () => {
-  const once = creditPomodoro(task('a'), 25 * 60_000);
-  assert.deepEqual([once.pomodoros, once.spentMs], [1, 1_500_000]);
-  const twice = creditPomodoro(once, 25 * 60_000);
-  assert.deepEqual([twice.pomodoros, twice.spentMs], [2, 3_000_000]);
+const AT = new Date('2026-10-28T10:00:00Z');
+
+test('startTimer: starts from 0, stops the other running task, marks the target Doing, returns only changed tasks', () => {
+  const notes = [task('a', { tag: 'doing', startedAt: '2026-10-28T09:00:00Z', spentMs: 1000 }), task('b'), task('c')];
+  const changed = startTimer(notes, 'b', AT, '2026-10-28');
+  assert.deepEqual(changed.map((n) => n.id), ['a', 'b']);
+  assert.equal(changed[0]?.startedAt, undefined);
+  assert.equal(changed[0]?.spentMs, 1000 + 3_600_000);
+  assert.equal(changed[1]?.tag, 'doing');
+  assert.equal(changed[1]?.startedAt, '2026-10-28T10:00:00.000Z');
+  assert.equal(elapsedMs(changed[1] as Note, AT.getTime() + 5000), 5000, 'a new task counts up from 0');
+});
+
+test('startTimer: nothing to do for a done task, a running task or an unknown id', () => {
+  assert.deepEqual(startTimer([task('d', { tag: 'done' })], 'd', AT, '2026-10-28'), []);
+  assert.deepEqual(startTimer([task('r', { tag: 'doing', startedAt: '2026-10-28T09:00:00Z' })], 'r', AT, '2026-10-28'), []);
+  assert.deepEqual(startTimer([], 'x', AT, '2026-10-28'), []);
+});
+
+test('stop banks the run and the total keeps growing across runs; reset goes back to 0', () => {
+  const running = task('a', { tag: 'doing', startedAt: '2026-10-28T09:59:00Z', spentMs: 5000 });
+  assert.equal(elapsedMs(running, AT.getTime()), 65_000);
+  assert.equal(runMs(running, AT.getTime()), 60_000);
+  const stopped = stopTimer(running, AT);
+  assert.equal(stopped.spentMs, 65_000);
+  assert.equal(runMs(stopped, AT.getTime()), 0);
+  assert.equal('startedAt' in stopped, false);
+  assert.equal(stopTimer(task('b'), AT).spentMs, undefined, 'stopped task unchanged');
+  const cleared = resetTimer(running);
+  assert.deepEqual([cleared.spentMs, 'startedAt' in cleared], [0, false]);
+});
+
+test('moveNote away from Doing stops the stopwatch; staying Doing keeps it', () => {
+  const running = task('a', { tag: 'doing', startedAt: '2026-10-28T09:00:00Z' });
+  assert.equal(moveNote(running, 'done', AT, '2026-10-28').startedAt, undefined);
+  assert.equal(moveNote(running, 'done', AT, '2026-10-28').spentMs, 3_600_000);
+  assert.equal(moveNote(running, 'doing', AT, '2026-10-28').startedAt, '2026-10-28T09:00:00Z');
+});
+
+test('formatClock counts up from 00:00', () => {
+  assert.equal(formatClock(0), '00:00');
+  assert.equal(formatClock(65_000), '01:05');
+  assert.equal(formatClock(3_909_000), '1:05:09');
 });
 
 test('placeOf: old tasks without a place read as Schedule; new ones can be unsorted', () => {

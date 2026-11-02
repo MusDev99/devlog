@@ -7,7 +7,7 @@ type Props = { onAdd: (draft: Draft, size: Size, focus: boolean) => Promise<void
 
 /**
  * Add row: text (or voice), size, and two ways to add. New tasks land in Unsorted.
- * 🍅 adds and focuses the timer on it in one tap (Fitts); `wip:` / `b:` / `done:` prefixes set a status.
+ * ▶ adds it and starts its stopwatch in one tap (Fitts); `wip:` / `b:` / `done:` prefixes set a status.
  */
 export function Composer({ onAdd }: Props) {
   const [text, setText] = useState('');
@@ -34,7 +34,7 @@ export function Composer({ onAdd }: Props) {
     }
   }
 
-  const square = 'state-layer grid size-12 shrink-0 place-items-center rounded-2xl';
+  const square = 'press state-layer grid size-12 shrink-0 place-items-center rounded-2xl';
   return (
     <form
       onSubmit={(e) => {
@@ -45,7 +45,7 @@ export function Composer({ onAdd }: Props) {
     >
       <div class="flex flex-wrap items-center gap-2 sm:flex-nowrap">
         {/* Phone: the text gets a full line (Fitts); the controls sit under it, to the right. */}
-        <div class="flex min-h-12 w-full min-w-0 items-center rounded-2xl sm:w-auto sm:flex-1 border border-line bg-surface-high pl-4 focus-within:outline-2 focus-within:outline-primary">
+        <div class="flex min-h-12 w-full min-w-0 items-center rounded-2xl border border-transparent bg-surface-high pl-4 transition-colors focus-within:border-accent/60 hover:border-line sm:w-auto sm:flex-1">
           <label class="sr-only" for="note-text">
             New task
           </label>
@@ -79,11 +79,11 @@ export function Composer({ onAdd }: Props) {
           type="button"
           disabled={saving}
           onClick={() => void submit(true)}
-          aria-label="Add and focus on it"
-          title="Add and focus on it"
-          class={`${square} ml-auto border border-line bg-surface-high text-xl disabled:opacity-60 sm:ml-0`}
+          aria-label="Add and start timer"
+          title="Add and start timer"
+          class={`${square} ml-auto bg-surface-high text-accent disabled:opacity-60 sm:ml-0`}
         >
-          <span aria-hidden="true">🍅</span>
+          <Icon name="play" class="size-5" />
         </button>
         <label class="sr-only" for="note-size">
           Size in story points
@@ -92,7 +92,7 @@ export function Composer({ onAdd }: Props) {
           id="note-size"
           value={size}
           onChange={(e) => setSize(Number(e.currentTarget.value) as Size)}
-          class="min-h-12 shrink-0 rounded-2xl border border-line bg-surface-high px-2 text-sm font-medium text-fg"
+          class="min-h-12 shrink-0 cursor-pointer rounded-2xl bg-surface-high px-3 text-sm font-medium text-fg"
         >
           {SIZES.map((s) => (
             <option key={s} value={s}>
@@ -100,7 +100,7 @@ export function Composer({ onAdd }: Props) {
             </option>
           ))}
         </select>
-        <button type="submit" disabled={saving} aria-label="Add task" class={`${square} bg-primary text-on-primary shadow-md disabled:opacity-60`}>
+        <button type="submit" disabled={saving} aria-label="Add task" class={`${square} bg-accent text-on-accent shadow-md disabled:opacity-60`}>
           <Icon name="add" class="size-6" />
         </button>
       </div>

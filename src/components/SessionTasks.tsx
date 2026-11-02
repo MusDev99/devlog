@@ -9,6 +9,7 @@ import { PLACE_TONE, TaskRow, type RowActions } from './TaskRow.tsx';
 type Props = RowActions & {
   tasks: Note[];
   today: string;
+  nowMs: number;
   focusId: string | null;
   onAdd: (draft: Draft, size: Size, focus: boolean) => Promise<void>;
 };
@@ -33,7 +34,7 @@ const savedView = (): View => (loadPref(VIEW_KEY) === 'list' ? 'list' : 'matrix'
  * Drag a row with the mouse, or long-press then drag on touch (a plain swipe still scrolls);
  * the row menu moves it without dragging.
  */
-export function SessionTasks({ tasks, today, focusId, onAdd, ...actions }: Props) {
+export function SessionTasks({ tasks, today, nowMs, focusId, onAdd, ...actions }: Props) {
   const [view, setView] = useState<View>(savedView);
   const [drag, setDrag] = useState<Drag | null>(null);
   const dragRef = useRef<Drag | null>(null);
@@ -120,9 +121,11 @@ export function SessionTasks({ tasks, today, focusId, onAdd, ...actions }: Props
 
   const rowActions: RowActions = { ...actions, onSelect: (note) => !suppressClick.current && actions.onSelect(note) };
   const row = (note: Note, showPlace = false) => (
-    <TaskRow key={note.id} note={note} focused={note.id === focusId} showPlace={showPlace} onPointerDown={rowPointerDown} {...rowActions} />
+    <TaskRow key={note.id} note={note} nowMs={nowMs} focused={note.id === focusId} showPlace={showPlace} onPointerDown={rowPointerDown} {...rowActions} />
   );
-  const ring = (place: Place) => (drag?.over === place && drag.over !== placeOf(drag.note) ? 'outline-2 outline-dashed outline-primary' : '');
+  // Drop zones light up in their own colour while a task hovers them.
+  const ring = (place: Place) =>
+    drag?.over === place && drag.over !== placeOf(drag.note) ? `outline-2 outline-dashed outline-offset-2 ${PLACE_TONE[place].ring}` : '';
   const switchView = (v: View) => {
     setView(v);
     savePref(VIEW_KEY, v);
@@ -133,38 +136,47 @@ export function SessionTasks({ tasks, today, focusId, onAdd, ...actions }: Props
   const list = view === 'list' ? listView(tasks, today) : null;
 
   return (
-    <section aria-labelledby="tasks-title" class={`rounded-[28px] border border-line/60 bg-surface p-4 sm:p-5 ${drag ? 'select-none' : ''}`}>
-      <div class="flex items-center justify-between gap-3">
-        <h2 id="tasks-title" class="text-lg font-semibold">
-          Session Tasks
-        </h2>
-        <span class="rounded-full bg-primary-container px-2.5 py-0.5 text-xs font-semibold text-on-primary-container tabular-nums" aria-label={`${done} of ${total} done`}>
-          {done}/{total}
-        </span>
+    <section aria-labelledby="tasks-title" class={drag ? 'select-none' : ''}>
+      <div class="flex items-center gap-3">
+        <div class="min-w-0 flex-1">
+          <div class="flex items-baseline gap-2">
+            <h2 id="tasks-title" class="text-lg font-semibold">
+              Tasks
+            </h2>
+            <span class="text-sm text-muted tabular-nums" aria-label={`${done} of ${total} done`}>
+              {done}/{total}
+            </span>
+          </div>
+          {/* Goal-gradient: the bar fills as tasks get done. */}
+          <div aria-hidden="true" class="mt-2 h-1 overflow-hidden rounded-full bg-surface-high">
+            <div class="h-full rounded-full bg-ok transition-[width] duration-500" style={{ width: `${total ? (done / total) * 100 : 0}%` }} />
+          </div>
+        </div>
+        <div role="tablist" aria-label="Task view" class="flex shrink-0 rounded-full bg-surface-high p-1">
+          {(['list', 'matrix'] as const).map((v) => (
+            <button
+              key={v}
+              type="button"
+              role="tab"
+              aria-selected={view === v}
+              aria-label={v === 'list' ? 'List' : 'Matrix'}
+              title={v === 'list' ? 'List' : 'Matrix'}
+              onClick={() => switchView(v)}
+              class={`press grid size-11 place-items-center rounded-full transition-colors ${view === v ? 'bg-surface-highest text-fg shadow-sm' : 'text-muted hover:text-fg'}`}
+            >
+              <Icon name={v === 'list' ? 'list' : 'grid'} class="size-5" />
+            </button>
+          ))}
+        </div>
       </div>
 
       <div class="mt-4">
         <Composer onAdd={onAdd} />
       </div>
 
-      <div role="tablist" aria-label="Task view" class="mt-4 grid grid-cols-2 gap-1 rounded-2xl bg-surface-high p-1">
-        {(['list', 'matrix'] as const).map((v) => (
-          <button
-            key={v}
-            type="button"
-            role="tab"
-            aria-selected={view === v}
-            onClick={() => switchView(v)}
-            class={`state-layer min-h-11 rounded-xl text-sm font-semibold ${view === v ? 'bg-bg text-fg shadow-sm' : 'text-muted'}`}
-          >
-            {v === 'list' ? 'List' : 'Matrix'}
-          </button>
-        ))}
-      </div>
-
       {list && (
         <div class="mt-4">
-          {list.tasks.length === 0 && <p class="px-1 py-6 text-center text-sm text-muted">No tasks yet. Add one above.</p>}
+          {list.tasks.length === 0 && <p class="px-1 py-10 text-center text-sm text-muted">No tasks yet. Add one above.</p>}
           <ul class="grid gap-1.5">{list.tasks.map((n) => row(n, true))}</ul>
           {list.earlier.length > 0 && (
             <details class="group mt-3">
@@ -180,42 +192,51 @@ export function SessionTasks({ tasks, today, focusId, onAdd, ...actions }: Props
 
       {view === 'matrix' && unsorted && (
         <>
-          <div data-drop="unsorted" class={`mt-4 rounded-2xl border border-dashed border-outline/60 p-3 ${ring('unsorted')}`}>
-            <div class="flex items-center justify-between gap-2">
-              <h3 class="font-semibold">Unsorted</h3>
-              <span class="text-xs text-muted tabular-nums">{unsorted.open}</span>
+          {/* Unsorted only takes space when it holds something, or while a task could be dropped back in. */}
+          {(unsorted.tasks.length > 0 || drag) && (
+            <div data-drop="unsorted" class={`mt-4 animate-rise rounded-2xl border border-dashed border-line p-2.5 ${PLACE_TONE.unsorted.tint} ${ring('unsorted')}`}>
+              <div class="flex items-center justify-between gap-2 px-1.5 pb-2">
+                <h3 class="text-sm font-semibold">Unsorted</h3>
+                <span class="text-xs text-muted">{unsorted.tasks.length > 0 ? 'Drag into a quadrant' : 'Drop here to unsort'}</span>
+              </div>
+              <ul class="grid gap-1.5">{unsorted.tasks.map((n) => row(n))}</ul>
             </div>
-            {unsorted.tasks.length === 0 ? (
-              <p class="mt-1 text-xs text-muted">All sorted ✓ Drop a task here to unsort it.</p>
-            ) : (
-              <ul class="mt-2 grid gap-1.5">{unsorted.tasks.map((n) => row(n))}</ul>
-            )}
-          </div>
+          )}
 
-          <div class="mt-4 hidden grid-cols-2 gap-3 text-center text-[11px] font-semibold tracking-widest text-muted uppercase md:grid">
+          <div class="mt-5 hidden grid-cols-2 gap-3 text-center text-[11px] font-semibold tracking-[0.16em] text-muted uppercase md:grid">
             <span>Urgent</span>
             <span>Not urgent</span>
           </div>
-          <div class="mt-3 grid gap-3 md:mt-2 md:grid-cols-2">
+          <div class="mt-4 grid gap-3 md:mt-2 md:grid-cols-2">
             {views.slice(1).map((v) => {
               if (v.place === 'unsorted') return null;
               const label = QUADRANT_LABELS[v.place];
               const tone = PLACE_TONE[v.place];
               return (
-                <section key={v.place} data-drop={v.place} aria-labelledby={`q-${v.place}`} class={`min-h-40 rounded-2xl p-3 ${tone.tint} ${ring(v.place)}`}>
-                  <header class="flex items-start justify-between gap-2">
-                    <div class="min-w-0">
-                      <h3 id={`q-${v.place}`} class={`flex items-center gap-2 font-semibold ${tone.text}`}>
-                        <span class={`rounded-md px-1.5 py-px text-[11px] font-bold ${tone.badge}`}>{label.badge}</span>
-                        {label.name}
-                      </h3>
-                      <p class="mt-0.5 text-xs text-muted">{label.hint}</p>
-                    </div>
-                    <span class="pt-0.5 text-xs text-muted tabular-nums" aria-label={`${v.open} open, ${v.points} story points`}>
-                      {v.open}
+                <section
+                  key={v.place}
+                  data-drop={v.place}
+                  aria-labelledby={`q-${v.place}`}
+                  class={`flex min-h-36 flex-col rounded-2xl p-2.5 transition-[outline-color] md:min-h-44 ${tone.tint} ${ring(v.place)}`}
+                >
+                  <header class="flex items-center justify-between gap-2 px-1.5 pt-0.5 pb-2" title={label.hint}>
+                    <h3 id={`q-${v.place}`} class="flex min-w-0 items-center gap-2 text-sm font-semibold">
+                      <span aria-hidden="true" class={`size-2 shrink-0 rounded-full ${tone.dot}`} />
+                      <span class={tone.text}>{label.name}</span>
+                      <span class="truncate text-xs font-normal text-muted">
+                        {label.badge}
+                        <span class="hidden sm:inline"> · {label.hint}</span>
+                      </span>
+                    </h3>
+                    <span class="shrink-0 text-xs text-muted tabular-nums" aria-label={`${v.open} open, ${v.points} story points`}>
+                      {v.open > 0 ? `${v.open} · ${v.points} SP` : ''}
                     </span>
                   </header>
-                  <ul class="mt-2 grid gap-1.5">{v.tasks.map((n) => row(n))}</ul>
+                  {v.tasks.length === 0 ? (
+                    <p class="grid flex-1 place-items-center rounded-xl border border-dashed border-line/70 px-3 py-4 text-center text-xs text-muted">Drag a task here</p>
+                  ) : (
+                    <ul class="grid gap-1.5">{v.tasks.map((n) => row(n))}</ul>
+                  )}
                 </section>
               );
             })}
@@ -227,7 +248,7 @@ export function SessionTasks({ tasks, today, focusId, onAdd, ...actions }: Props
         <div
           aria-hidden="true"
           style={{ left: `${drag.x}px`, top: `${drag.y}px` }}
-          class="pointer-events-none fixed z-50 max-w-64 -translate-x-1/2 -translate-y-1/2 truncate rounded-xl bg-surface-highest px-4 py-3 text-sm shadow-xl outline-2 outline-primary"
+          class="pointer-events-none fixed z-50 max-w-64 -translate-x-1/2 -translate-y-1/2 rotate-2 truncate rounded-xl bg-surface-highest px-4 py-3 text-sm font-medium shadow-2xl ring-2 ring-accent"
         >
           {drag.note.text}
         </div>

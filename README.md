@@ -1,6 +1,6 @@
 # 🎙️ DevLog
 
-A Pomodoro focus timer next to your Session Tasks on an urgent × important (Eisenhower) matrix, with story points and 🍅 per task, that turns into a ready-to-paste standup each morning. Offline-first PWA, notes stay on your device. Free to run: a static site with no server, no AI and no API keys.
+A stopwatch for each task next to an urgent × important (Eisenhower) matrix, with story points and time logged per task, that turns into a ready-to-paste standup each morning. Offline-first PWA, notes stay on your device. Free to run: a static site with no server, no AI and no API keys.
 
 ## ✨ Features
 
@@ -14,7 +14,8 @@ A Pomodoro focus timer next to your Session Tasks on an urgent × important (Eis
 | 💸 No AI, no sign-in, no API keys: static site, free to host | ✅ v2.0 |
 | 🗂️ Kanban board: To do / Doing / Blocked / Done, drag and drop on desktop, one-tap moves on the phone | ✅ v2.0 (replaced in v2.1) |
 | 🧭 Eisenhower dashboard (Do first / Schedule / Delegate / Eliminate), drag by touch or mouse, T-shirt sizes S 1 / M 3 / L 5, one start/stop timer at a time | ✅ v2.1 (redesigned in v2.2) |
-| 🍅 Pomodoro (Focus 25 / Short 5 / Long 15) for the task you pick, 🍅 per task, Session Tasks with Unsorted, List / Matrix, story points 1 / 3 / 5 | ✅ v2.2 |
+| 🍅 Pomodoro (Focus 25 / Short 5 / Long 15), Session Tasks with Unsorted, List / Matrix, story points 1 / 3 / 5 | ✅ v2.2 (timer replaced in v2.3) |
+| ⏱️ Stopwatch per task (Start counts up from 0, Stop keeps the total), lean UI: colour by state, one big Start/Stop, live reports, mini player, keyboard shortcuts | ✅ v2.3 |
 
 ## 🚀 Quick start
 
@@ -32,10 +33,10 @@ Node 22.18+ (tests run TypeScript directly with `node --test`).
 | Path | What |
 |---|---|
 | `src/App.tsx` | Main screen |
-| `src/components/` | `TimerPanel` (Pomodoro ring), `SessionTasks` (List / Matrix, Unsorted, drag), `TaskRow`, `Composer` (add row), `StandupCard`, `RecapCard` (week recap), `Icon` (inline Material icons) |
+| `src/components/` | `TimerPanel` (stopwatch ring), `SessionTasks` (List / Matrix, Unsorted, drag), `TaskRow` (Start/Stop per task), `Composer` (add row), `Reports` (Standup / Week), `Icon` |
 | `src/styles.css` | Material Design 3 colour roles as Tailwind `@theme` tokens, `state-layer` utility |
 | `tests/golden/` | Standup golden set (10 note days): the rules keep every blocker and invent nothing |
-| `src/lib/` | Pure logic (`notes.ts`, `pomodoro.ts`, `matrix.ts`, `standup.ts`, `recap.ts`, `today.ts`), `db.ts` (IndexedDB, the only storage module), `speech.ts`, PWA helpers |
+| `src/lib/` | Pure logic (`notes.ts` incl. the stopwatch, `matrix.ts`, `standup.ts`, `recap.ts`, `today.ts`), `db.ts` (IndexedDB, the only storage module), `speech.ts`, PWA helpers |
 | `public/sw.js`, `public/sw-policy.js` | Service worker and its tested routing rules |
 | `build/sw-assets.ts` | Vite plugin: list of hashed files to precache |
 | `vercel.json` | Security headers, CSP, cache headers |
@@ -45,9 +46,11 @@ Node 22.18+ (tests run TypeScript directly with `node --test`).
 
 ## 💡 Tips
 
-- New tasks land in **Unsorted**; pick their size (1 / 3 / 5 SP) before adding. 🍅 adds a task and focuses the timer on it in one tap. `wip:`, `b:` (blocked) or `done:` set the status.
+- New tasks land in **Unsorted** (it hides when empty); pick their size (1 / 3 / 5 SP) before adding. ▶ next to the field adds a task and starts its stopwatch. `wip:`, `b:` (blocked) or `done:` set the status.
 - Drag a task onto a quadrant with the mouse, or long-press then drag on a phone. ⋮ moves it without dragging and changes size, status or deletes.
-- Tap a task to focus on it, then **Start**. Each finished Focus round adds a 🍅 to that task and moves to a break (a long one every 4 rounds). The timer keeps running through reloads.
+- Every task has its own ▶ / ■. **Start** counts up from 0 (or from the task's total so far), **Stop** keeps the total. Only one runs at a time; starting another stops the first. The big clock shows the selected task, with Reset (undoable) and ✓ Done beside it. While a clock runs, the app turns teal.
+- Keyboard: **Space** start/stop the selected task, **N** new task. On a phone, a mini player with Stop sticks to the bottom once you scroll.
+- **Reports**: Standup and Week tabs update live; **Copy** pastes them into chat.
 - Tick the circle to finish a task: it stays crossed out in its quadrant for a week, then moves to **List → Done earlier**.
 - Start the day with **Build standup**, then **Copy** into your team chat.
 - On Friday the **Friday recap** opens by itself (shipped / in progress / blockers for the week); other days tap **Week so far**.
