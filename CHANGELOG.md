@@ -1,5 +1,14 @@
 # Changelog
 
+## 2026-11-03 03:30
+
+- feat(pwa): mobile-first shell: bottom tab bar (Timer / Tasks / Stats) with open-task badge and running dot, safe-area aware; mini player and toasts sit above it
+- feat(pwa): Install button where the browser offers it; one-time Share → Add to Home Screen hint on iPhone / iPad
+- feat(pwa): updates wait for "New version ready · Reload" instead of swapping mid-task; checks for updates when the app returns to the foreground
+- feat(pwa): manifest `id`, current colours, categories, app shortcuts (Timer, Add a task, Stats); iOS standalone meta tags
+- feat(pwa): open-task badge on the app icon, persistent storage request, haptic tick on Start / Stop, no overscroll bounce when installed
+- fix(pwa): the installed app opened blank offline: cached JS / CSS were missed because of `Vary: Origin`; lookups now ignore Vary (SW `v2`)
+
 ## 2026-11-03 02:00
 
 - feat(stats): Stats screen: today's story points, tasks done and focus time as rings against daily targets; activity and on-target streaks; finished-today list

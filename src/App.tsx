@@ -6,7 +6,8 @@ import { SettingsDialog } from './components/SettingsDialog.tsx';
 import { StatsView } from './components/StatsView.tsx';
 import { PLACE_NAMES } from './components/TaskRow.tsx';
 import { TimerPanel } from './components/TimerPanel.tsx';
-import { allNotes, deleteNote, loadPref, loadTargets, saveNote, savePref, saveTargets } from './lib/db.ts';
+import { allNotes, deleteNote, keepStorage, loadPref, loadTargets, saveNote, savePref, saveTargets } from './lib/db.ts';
+import { isScreen, launchParams, type Screen } from './lib/launch.ts';
 import {
   elapsedMs,
   formatClock,
@@ -21,19 +22,26 @@ import {
   type Size,
   type Tag,
 } from './lib/notes.ts';
-import { useOnline } from './lib/pwa.ts';
+import { setBadge, useInstall, useOnline, useUpdate } from './lib/pwa.ts';
 import { dayKey, dayLabel, greeting } from './lib/today.ts';
 
 const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
 const SELECTED_KEY = 'devlog.selected';
 const SCREEN_KEY = 'devlog.screen';
+const IOS_HINT_KEY = 'devlog.ios-hint';
 
-/** Top-level screens. On wide screens Timer and Tasks share one "Focus" screen side by side. */
-type Screen = 'timer' | 'tasks' | 'stats';
+/** A home-screen shortcut (`?screen=`) wins over the screen used last time. */
+const launch = launchParams(location.search);
 const savedScreen = (): Screen => {
   const v = loadPref(SCREEN_KEY);
-  return v === 'tasks' || v === 'stats' ? v : 'timer';
+  return launch.screen ?? (isScreen(v) ? v : 'timer');
 };
+
+const TABS: { id: Screen; label: string; icon: 'timer' | 'list' | 'chart' }[] = [
+  { id: 'timer', label: 'Timer', icon: 'timer' },
+  { id: 'tasks', label: 'Tasks', icon: 'list' },
+  { id: 'stats', label: 'Stats', icon: 'chart' },
+];
 
 type Load = { state: 'loading' } | { state: 'ready'; tasks: Note[] } | { state: 'error' };
 
@@ -56,6 +64,9 @@ export function App() {
   const [screen, setScreenState] = useState<Screen>(savedScreen);
   const [targets, setTargets] = useState(loadTargets);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const install = useInstall();
+  const applyUpdate = useUpdate();
+  const [iosHint, setIosHint] = useState(() => install.iosHint && loadPref(IOS_HINT_KEY) !== 'dismissed');
   const setScreen = (next: Screen) => {
     setScreenState(next);
     savePref(SCREEN_KEY, next);
@@ -77,6 +88,7 @@ export function App() {
   const runningTask = tasks.find((n) => n.startedAt) ?? null;
   const selected = runningTask ?? tasks.find((n) => n.id === selectedId && n.tag !== 'done') ?? null;
   const running = runningTask !== null;
+  const openCount = tasks.filter((t) => t.tag !== 'done').length;
   const update = (fn: (current: Note[]) => Note[]) =>
     setLoad((prev) => ({ state: 'ready', tasks: fn(prev.state === 'ready' ? prev.tasks : []) }));
   const put = (...changed: Note[]) =>
@@ -120,6 +132,7 @@ export function App() {
   /** Start or stop a task's stopwatch. Starting one stops any other (one at a time) and selects it. */
   function toggleTimer(note: Note) {
     const at = new Date();
+    navigator.vibrate?.(12);
     if (note.startedAt) return void save([stopTimer(note, at)]);
     select(note.id);
     setNowMs(at.getTime());
@@ -127,6 +140,19 @@ export function App() {
   }
 
   const toggle = () => selected && toggleTimer(selected);
+
+  // Opened from a shortcut: clean the URL; "Add a task" puts the cursor in the field.
+  useEffect(() => {
+    if (!location.search) return;
+    history.replaceState(null, '', location.pathname);
+    if (launch.newTask) setTimeout(() => document.getElementById('note-text')?.focus(), 300);
+  }, []);
+
+  // Installed app: open tasks on the home-screen icon; ask the browser to keep this device's data.
+  useEffect(() => setBadge(openCount), [openCount]);
+  useEffect(() => {
+    if (load.state === 'ready' && tasks.length > 0) void keepStorage();
+  }, [load.state, tasks.length > 0]);
 
   // Keyboard: Space start/stop, N new task. Ignored while typing.
   useEffect(() => {
@@ -193,12 +219,11 @@ export function App() {
   }, [toast]);
 
   const showMini = !timerVisible && selected !== null;
-  const openCount = tasks.filter((t) => t.tag !== 'done').length;
 
   return (
     <div data-mode={running ? 'running' : 'idle'} class="mode-wash min-h-dvh">
-      <div class="mx-auto flex min-h-dvh w-full max-w-6xl flex-col px-4 pt-[max(8px,env(safe-area-inset-top))] pb-24 lg:px-6 lg:pb-8">
-        <header class="flex flex-wrap items-center justify-between gap-x-4 gap-y-3 py-4">
+      <div class="mx-auto flex min-h-dvh w-full max-w-6xl flex-col px-4 pt-[max(8px,env(safe-area-inset-top))] pb-[calc(10rem+env(safe-area-inset-bottom))] lg:px-6 lg:pb-8">
+        <header class="flex items-center justify-between gap-x-4 py-4">
           <div class="flex min-w-0 items-baseline gap-3">
             <p class="text-lg font-bold tracking-tight">
               Dev<span class="text-accent">Log</span>
@@ -215,6 +240,16 @@ export function App() {
                 <span class="hidden sm:inline">Offline</span>
               </span>
             )}
+            {install.canInstall && (
+              <button
+                type="button"
+                onClick={() => void install.install()}
+                class="press state-layer inline-flex min-h-11 items-center gap-1.5 rounded-full bg-accent px-4 text-sm font-semibold text-on-accent"
+              >
+                <Icon name="download" class="size-[18px]" />
+                Install
+              </button>
+            )}
             <button
               type="button"
               onClick={() => setSettingsOpen(true)}
@@ -226,42 +261,51 @@ export function App() {
             </button>
           </div>
 
-          {/* Screen switch. Phone: Timer / Tasks / Stats. Wide: Focus (timer + tasks) / Stats (Jakob: a familiar tab bar). */}
-          <nav aria-label="Screens" class="order-last w-full lg:order-none lg:w-auto lg:flex-1 lg:px-6">
-            <div role="tablist" class="mx-auto grid max-w-md grid-cols-3 gap-1 rounded-full bg-surface-high/80 p-1 lg:max-w-xs lg:grid-cols-2">
-              {(
-                [
-                  { id: 'timer', label: 'Timer', icon: 'timer', wide: false },
-                  { id: 'tasks', label: 'Tasks', icon: 'list', wide: false },
-                  { id: 'timer', label: 'Focus', icon: 'timer', wide: true },
-                  { id: 'stats', label: 'Stats', icon: 'chart', wide: null },
-                ] as const
-              ).map((tab) => {
-                const active = tab.wide === true ? screen !== 'stats' : screen === tab.id;
-                const shown = tab.wide === null ? 'flex' : tab.wide ? 'hidden lg:flex' : 'flex lg:hidden';
+          {/* Wide screens: Focus (timer + tasks side by side) / Stats in the header. Phones use the bottom tab bar. */}
+          <nav aria-label="Screens" class="hidden lg:block lg:flex-1 lg:px-6">
+            <div role="tablist" class="mx-auto grid max-w-xs grid-cols-2 gap-1 rounded-full bg-surface-high/80 p-1">
+              {(['timer', 'stats'] as const).map((id) => {
+                const active = id === 'stats' ? screen === 'stats' : screen !== 'stats';
                 return (
                   <button
-                    key={tab.label}
+                    key={id}
                     type="button"
                     role="tab"
                     aria-selected={active}
-                    onClick={() => setScreen(tab.id)}
-                    class={`press relative ${shown} min-h-11 items-center justify-center gap-2 rounded-full px-3 text-sm font-medium transition-colors ${
+                    onClick={() => setScreen(id)}
+                    class={`press flex min-h-11 items-center justify-center gap-2 rounded-full px-3 text-sm font-medium transition-colors ${
                       active ? 'bg-surface-highest text-fg shadow-sm' : 'text-muted hover:text-fg'
                     }`}
                   >
-                    <Icon name={tab.icon} class="size-[18px]" />
-                    {tab.label}
-                    {tab.id === 'tasks' && openCount > 0 && (
-                      <span class="grid min-w-5 place-items-center rounded-full bg-accent px-1 text-[11px] font-bold text-on-accent tabular-nums">{openCount}</span>
-                    )}
-                    {tab.id === 'timer' && running && !active && <span aria-label="running" class="size-2 animate-glow rounded-full bg-accent" />}
+                    <Icon name={id === 'stats' ? 'chart' : 'timer'} class="size-[18px]" />
+                    {id === 'stats' ? 'Stats' : 'Focus'}
+                    {id === 'timer' && running && !active && <span aria-label="running" class="size-2 animate-glow rounded-full bg-accent" />}
                   </button>
                 );
               })}
             </div>
           </nav>
         </header>
+
+        {iosHint && (
+          <div role="note" class="mb-4 flex animate-rise items-center gap-3 rounded-2xl bg-surface-high px-4 py-2 text-sm lg:hidden">
+            <Icon name="download" class="size-5 shrink-0 text-accent" />
+            <p class="min-w-0 flex-1 leading-5">
+              Install DevLog: tap <Icon name="share" class="inline size-4 align-[-3px]" /> <b class="font-semibold">Share</b>, then <b class="font-semibold">Add to Home Screen</b>.
+            </p>
+            <button
+              type="button"
+              onClick={() => {
+                setIosHint(false);
+                savePref(IOS_HINT_KEY, 'dismissed');
+              }}
+              aria-label="Dismiss install hint"
+              class="press state-layer grid size-11 shrink-0 place-items-center rounded-full text-muted"
+            >
+              <Icon name="close" class="size-5" />
+            </button>
+          </div>
+        )}
 
         {screen === 'stats' && (
           <main class="flex-1">
@@ -337,8 +381,41 @@ export function App() {
         }}
       />
 
+      {/* Phone: bottom tab bar in thumb reach (Fitts), the pattern people know from native apps (Jakob). */}
+      <nav
+        aria-label="Screens"
+        class="fixed inset-x-0 bottom-0 z-40 border-t border-line/70 bg-surface/90 pb-[env(safe-area-inset-bottom)] backdrop-blur-xl lg:hidden"
+      >
+        <div role="tablist" class="mx-auto grid max-w-md grid-cols-3">
+          {TABS.map((tab) => {
+            const active = screen === tab.id;
+            return (
+              <button
+                key={tab.id}
+                type="button"
+                role="tab"
+                aria-selected={active}
+                onClick={() => setScreen(tab.id)}
+                class={`press flex min-h-16 flex-col items-center justify-center gap-1 text-xs font-medium transition-colors ${active ? 'text-fg' : 'text-muted'}`}
+              >
+                <span class={`relative grid h-8 w-16 place-items-center rounded-full transition-colors ${active ? 'bg-accent/20 text-accent' : ''}`}>
+                  <Icon name={tab.icon} class="size-[22px]" />
+                  {tab.id === 'tasks' && openCount > 0 && (
+                    <span class="absolute -top-1 right-2 grid h-[18px] min-w-[18px] place-items-center rounded-full bg-accent px-1 text-[10px] font-bold text-on-accent tabular-nums">
+                      {openCount}
+                    </span>
+                  )}
+                  {tab.id === 'timer' && running && <span aria-label="running" class="absolute top-0.5 right-4 size-2 animate-glow rounded-full bg-accent" />}
+                </span>
+                {tab.label}
+              </button>
+            );
+          })}
+        </div>
+      </nav>
+
       {showMini && (
-        <div class="fixed inset-x-0 bottom-0 z-40 animate-rise px-3 pb-[max(12px,env(safe-area-inset-bottom))] lg:hidden">
+        <div class="fixed inset-x-0 bottom-[calc(4.75rem+env(safe-area-inset-bottom))] z-40 animate-rise px-3 lg:hidden">
           <div class="mx-auto flex max-w-md items-center gap-3 rounded-full border border-line/70 bg-surface-high/95 py-1.5 pr-1.5 pl-4 shadow-2xl shadow-black/40 backdrop-blur">
             <span aria-hidden="true" class={`size-2 shrink-0 rounded-full bg-accent ${running ? 'animate-glow' : ''}`} />
             <span class="text-lg font-semibold tabular-nums">{formatClock(selected ? elapsedMs(selected, nowMs) : 0)}</span>
@@ -355,7 +432,20 @@ export function App() {
         </div>
       )}
 
-      <div aria-live="polite" class={`pointer-events-none fixed inset-x-0 z-50 flex justify-center px-4 ${showMini ? 'bottom-24' : 'bottom-6'}`}>
+      <div
+        aria-live="polite"
+        class={`pointer-events-none fixed inset-x-0 z-50 flex flex-col items-center gap-2 px-4 lg:bottom-6 ${
+          showMini ? 'bottom-[calc(9rem+env(safe-area-inset-bottom))]' : 'bottom-[calc(5.5rem+env(safe-area-inset-bottom))]'
+        }`}
+      >
+        {applyUpdate && (
+          <div class="pointer-events-auto flex w-full max-w-sm animate-rise items-center justify-between gap-3 rounded-2xl bg-inverse py-1 pr-2 pl-4 text-sm font-medium text-on-inverse shadow-2xl">
+            New version ready
+            <button type="button" onClick={applyUpdate} class="state-layer min-h-11 rounded-full px-3 font-semibold text-inverse-primary">
+              Reload
+            </button>
+          </div>
+        )}
         {toast && !undo && (
           <div class="pointer-events-auto flex min-h-12 max-w-md animate-rise items-center gap-2 rounded-2xl bg-inverse py-1 pr-1 pl-4 text-sm font-medium text-on-inverse shadow-2xl">
             {toast}
