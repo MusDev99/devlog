@@ -1,5 +1,4 @@
 import { isNote, type Note } from './notes.ts';
-import { isSession, type Session } from './pomodoro.ts';
 
 /** IndexedDB access. Cards never leave the device; this is the only module that touches storage. */
 const DB_NAME = 'devlog';
@@ -46,26 +45,6 @@ export async function saveNote(note: Note): Promise<void> {
 
 export async function deleteNote(id: string): Promise<void> {
   await done((await store('readwrite')).delete(id));
-}
-
-const SESSION_KEY = 'devlog.session';
-
-/** The Pomodoro session, so a running timer survives a reload. Null when absent, unreadable or blocked. */
-export function loadSession(): Session | null {
-  try {
-    const value: unknown = JSON.parse(localStorage.getItem(SESSION_KEY) ?? 'null');
-    return isSession(value) ? value : null;
-  } catch {
-    return null;
-  }
-}
-
-export function saveSession(session: Session): void {
-  try {
-    localStorage.setItem(SESSION_KEY, JSON.stringify(session));
-  } catch {
-    // Private mode or full storage: the timer still works until the page closes.
-  }
 }
 
 /** Small per-device preferences (e.g. List or Matrix). Absent or blocked storage reads as null. */

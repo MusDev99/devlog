@@ -1,4 +1,4 @@
-/** Pure task rules: no storage, no clock. A note is a task: a status (tag), a place on the matrix, a size and its 🍅. */
+/** Pure task rules: no storage, no clock. A note is a task: a status (tag), a place on the matrix, a size and a stopwatch. */
 
 /** Status order. */
 export const TAGS = ['todo', 'doing', 'blocker', 'done'] as const;
@@ -42,11 +42,11 @@ export type Note = {
   quadrant?: Place;
   /** Absent reads as 1 (S). */
   size?: Size;
-  /** Finished focus rounds (🍅) credited to this task. */
+  /** Legacy (Pomodoro, v2.2): still accepted on read, no longer shown. */
   pomodoros?: number;
-  /** Focus time from finished rounds, in ms. */
+  /** Stopwatch time banked by finished runs, in ms. */
   spentMs?: number;
-  /** Legacy (per-task stopwatch, v2.1): still accepted on read, no longer used. */
+  /** ISO 8601 UTC while the stopwatch runs; at most one task has it. */
   startedAt?: string;
 };
 
@@ -83,14 +83,57 @@ export function validateDraft(draft: Draft): string | null {
   return null;
 }
 
-/** A task changed to status `tag` at `at`; `day` is that moment's day in the user's zone. */
-export function moveNote(note: Note, tag: Tag, at: Date, day: string): Note {
-  return { ...note, tag, movedAt: at.toISOString(), day };
+/** Total stopwatch time at `nowMs`: banked runs plus the one running. Starts at 0 for a new task. */
+export function elapsedMs(note: Note, nowMs: number): number {
+  const running = note.startedAt ? Math.max(0, nowMs - Date.parse(note.startedAt)) : 0;
+  return (note.spentMs ?? 0) + running;
 }
 
-/** A finished focus round: one more 🍅 and its minutes. */
-export function creditPomodoro(note: Note, focusMs: number): Note {
-  return { ...note, pomodoros: (note.pomodoros ?? 0) + 1, spentMs: (note.spentMs ?? 0) + focusMs };
+/** The current run only (0 when stopped). */
+export function runMs(note: Note, nowMs: number): number {
+  return note.startedAt ? Math.max(0, nowMs - Date.parse(note.startedAt)) : 0;
+}
+
+/** Stop the stopwatch, banking the run. A stopped task comes back unchanged. */
+export function stopTimer(note: Note, at: Date): Note {
+  if (!note.startedAt) return note;
+  const stopped: Note = { ...note, spentMs: elapsedMs(note, at.getTime()) };
+  delete stopped.startedAt;
+  return stopped;
+}
+
+/** Back to 0:00 (stopped). */
+export function resetTimer(note: Note): Note {
+  const cleared: Note = { ...note, spentMs: 0 };
+  delete cleared.startedAt;
+  return cleared;
+}
+
+/** A task changed to status `tag` at `at`; `day` is that moment's day in the user's zone. Only Doing keeps a stopwatch running. */
+export function moveNote(note: Note, tag: Tag, at: Date, day: string): Note {
+  const moved = { ...note, tag, movedAt: at.toISOString(), day };
+  return tag === 'doing' ? moved : stopTimer(moved, at);
+}
+
+/**
+ * Start `id`'s stopwatch: any other running one stops first (one at a time), and the task becomes Doing.
+ * Returns only the tasks that changed, ready to save.
+ */
+export function startTimer(notes: Note[], id: string, at: Date, day: string): Note[] {
+  const target = notes.find((n) => n.id === id);
+  if (!target || target.startedAt || target.tag === 'done') return [];
+  const others = notes.filter((n) => n.id !== id && n.startedAt).map((n) => stopTimer(n, at));
+  const doing = target.tag === 'doing' ? target : moveNote(target, 'doing', at, day);
+  return [...others, { ...doing, startedAt: at.toISOString() }];
+}
+
+/** "1:05:09" / "12:04" on the clock. */
+export function formatClock(ms: number): string {
+  const total = Math.floor(ms / 1000);
+  const h = Math.floor(total / 3600);
+  const m = Math.floor((total % 3600) / 60);
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return h > 0 ? `${h}:${pad(m)}:${pad(total % 60)}` : `${pad(m)}:${pad(total % 60)}`;
 }
 
 /** "1:05:09" while running, "1h 05m" / "12m" / "0m" at rest. */

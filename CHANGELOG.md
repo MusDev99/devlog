@@ -1,5 +1,14 @@
 # Changelog
 
+## 2026-11-03 00:30
+
+- feat(timer): stopwatch per task replaces the Pomodoro: Start counts up from 0, Stop keeps the total, one running at a time, survives reloads; Reset (undoable) and Done beside the big Start/Stop
+- feat(tasks): every row has its own Start/Stop and shows time logged (live while running); ▶ in the add row adds and starts
+- feat(ui): colour grading: re-graded neutrals and matched accent hues; the app turns teal while a clock runs, coral when idle, with a soft wash behind the timer
+- feat(ui): lean layout: no outer task card, progress bar under "Tasks", icon List / Matrix switch, Unsorted only when needed, quadrant drop zones light up in their own colour, row extras on hover (always on touch)
+- feat(ui): Standup and Week merged into one live Reports card with Copy; phone mini player; Space / N shortcuts; tap squeeze, tick pop, rise-in motion (off with reduced motion)
+- removed: Pomodoro modes, breaks and 🍅 counts (old fields are read and ignored)
+
 ## 2026-11-02 22:30
 
 - feat(ui): redesign as a Pomodoro panel beside Session Tasks (ring timer, Focus / Short Break / Long Break, Pause / Resume / Reset)
