@@ -48,7 +48,12 @@ export type Note = {
   spentMs?: number;
   /** ISO 8601 UTC while the stopwatch runs; at most one task has it. */
   startedAt?: string;
+  /** Finished stopwatch runs, oldest first, so stats can place time on days. Time banked before v2.4 has none. */
+  runs?: Run[];
 };
+
+/** One stopwatch run: start and end, ISO 8601 UTC. */
+export type Run = { s: string; e: string };
 
 export const placeOf = (n: Note): Place => n.quadrant ?? 'schedule';
 export const sizeOf = (n: Note): Size => n.size ?? 1;
@@ -97,14 +102,14 @@ export function runMs(note: Note, nowMs: number): number {
 /** Stop the stopwatch, banking the run. A stopped task comes back unchanged. */
 export function stopTimer(note: Note, at: Date): Note {
   if (!note.startedAt) return note;
-  const stopped: Note = { ...note, spentMs: elapsedMs(note, at.getTime()) };
+  const stopped: Note = { ...note, spentMs: elapsedMs(note, at.getTime()), runs: [...(note.runs ?? []), { s: note.startedAt, e: at.toISOString() }] };
   delete stopped.startedAt;
   return stopped;
 }
 
 /** Back to 0:00 (stopped). */
 export function resetTimer(note: Note): Note {
-  const cleared: Note = { ...note, spentMs: 0 };
+  const cleared: Note = { ...note, spentMs: 0, runs: [] };
   delete cleared.startedAt;
   return cleared;
 }
@@ -147,6 +152,9 @@ export function formatDuration(ms: number, running: boolean): string {
   return h > 0 ? `${h}h ${pad(m)}m` : `${m}m`;
 }
 
+const isRun = (r: unknown): r is Run =>
+  typeof r === 'object' && r !== null && typeof (r as Run).s === 'string' && typeof (r as Run).e === 'string';
+
 /** Runtime guard for rows read back from IndexedDB (old or corrupt rows are skipped, never crash). */
 export function isNote(value: unknown): value is Note {
   if (typeof value !== 'object' || value === null) return false;
@@ -162,6 +170,7 @@ export function isNote(value: unknown): value is Note {
     (v.size === undefined || SIZES.includes(v.size as Size)) &&
     (v.spentMs === undefined || (typeof v.spentMs === 'number' && v.spentMs >= 0)) &&
     (v.startedAt === undefined || typeof v.startedAt === 'string') &&
+    (v.runs === undefined || (Array.isArray(v.runs) && v.runs.every(isRun))) &&
     TAGS.includes(v.tag as Tag)
   );
 }

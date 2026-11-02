@@ -1,4 +1,5 @@
 import { isNote, type Note } from './notes.ts';
+import { DEFAULT_TARGETS, isTargets, type Targets } from './stats.ts';
 
 /** IndexedDB access. Cards never leave the device; this is the only module that touches storage. */
 const DB_NAME = 'devlog';
@@ -62,4 +63,20 @@ export function savePref(key: string, value: string): void {
   } catch {
     // Convenience only.
   }
+}
+
+const TARGETS_KEY = 'devlog.targets';
+
+/** Daily targets from Settings; defaults when absent or invalid. */
+export function loadTargets(): Targets {
+  try {
+    const value: unknown = JSON.parse(loadPref(TARGETS_KEY) ?? 'null');
+    return isTargets(value) ? value : DEFAULT_TARGETS;
+  } catch {
+    return DEFAULT_TARGETS;
+  }
+}
+
+export function saveTargets(targets: Targets): void {
+  savePref(TARGETS_KEY, JSON.stringify(targets));
 }
