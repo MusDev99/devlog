@@ -74,11 +74,12 @@ test('stop banks the run and the total keeps growing across runs; reset goes bac
   assert.equal(runMs(running, AT.getTime()), 60_000);
   const stopped = stopTimer(running, AT);
   assert.equal(stopped.spentMs, 65_000);
+  assert.deepEqual(stopped.runs, [{ s: '2026-10-28T09:59:00Z', e: '2026-10-28T10:00:00.000Z' }], 'the run is dated for stats');
   assert.equal(runMs(stopped, AT.getTime()), 0);
   assert.equal('startedAt' in stopped, false);
   assert.equal(stopTimer(task('b'), AT).spentMs, undefined, 'stopped task unchanged');
   const cleared = resetTimer(running);
-  assert.deepEqual([cleared.spentMs, 'startedAt' in cleared], [0, false]);
+  assert.deepEqual([cleared.spentMs, cleared.runs, 'startedAt' in cleared], [0, [], false]);
 });
 
 test('moveNote away from Doing stops the stopwatch; staying Doing keeps it', () => {
@@ -117,6 +118,8 @@ test('isNote skips corrupt rows', () => {
   assert.equal(isNote({ id: '1', text: 't', tag: 'doing', createdAt: 'x', day: 'y', startedAt: 'z' }), true, 'legacy stopwatch rows still read');
   assert.equal(isNote({ id: '1', text: 't', tag: 'todo', createdAt: 'x', day: 'y', size: 2 }), false);
   assert.equal(isNote({ id: '1', text: 't', tag: 'todo', createdAt: 'x', day: 'y', spentMs: -1 }), false);
+  assert.equal(isNote({ id: '1', text: 't', tag: 'todo', createdAt: 'x', day: 'y', runs: [{ s: 'a', e: 'b' }] }), true);
+  assert.equal(isNote({ id: '1', text: 't', tag: 'todo', createdAt: 'x', day: 'y', runs: [{ s: 'a' }] }), false);
   assert.equal(isNote({ id: '1', text: 't', tag: 'nope', createdAt: 'x', day: 'y' }), false);
   assert.equal(isNote(null), false);
 });

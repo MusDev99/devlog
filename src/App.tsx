@@ -2,9 +2,11 @@ import { useEffect, useRef, useState } from 'preact/hooks';
 import { Icon } from './components/Icon.tsx';
 import { Reports } from './components/Reports.tsx';
 import { SessionTasks } from './components/SessionTasks.tsx';
+import { SettingsDialog } from './components/SettingsDialog.tsx';
+import { StatsView } from './components/StatsView.tsx';
 import { PLACE_NAMES } from './components/TaskRow.tsx';
 import { TimerPanel } from './components/TimerPanel.tsx';
-import { allNotes, deleteNote, loadPref, saveNote, savePref } from './lib/db.ts';
+import { allNotes, deleteNote, loadPref, loadTargets, saveNote, savePref, saveTargets } from './lib/db.ts';
 import {
   elapsedMs,
   formatClock,
@@ -24,6 +26,14 @@ import { dayKey, dayLabel, greeting } from './lib/today.ts';
 
 const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
 const SELECTED_KEY = 'devlog.selected';
+const SCREEN_KEY = 'devlog.screen';
+
+/** Top-level screens. On wide screens Timer and Tasks share one "Focus" screen side by side. */
+type Screen = 'timer' | 'tasks' | 'stats';
+const savedScreen = (): Screen => {
+  const v = loadPref(SCREEN_KEY);
+  return v === 'tasks' || v === 'stats' ? v : 'timer';
+};
 
 type Load = { state: 'loading' } | { state: 'ready'; tasks: Note[] } | { state: 'error' };
 
@@ -43,6 +53,14 @@ export function App() {
   const [undo, setUndo] = useState<Undo | null>(null);
   const [toast, setToast] = useState<string | null>(null);
   const timerRef = useRef<HTMLDivElement>(null);
+  const [screen, setScreenState] = useState<Screen>(savedScreen);
+  const [targets, setTargets] = useState(loadTargets);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const setScreen = (next: Screen) => {
+    setScreenState(next);
+    savePref(SCREEN_KEY, next);
+    window.scrollTo({ top: 0 });
+  };
   const [timerVisible, setTimerVisible] = useState(true);
 
   useEffect(() => {
@@ -175,11 +193,12 @@ export function App() {
   }, [toast]);
 
   const showMini = !timerVisible && selected !== null;
+  const openCount = tasks.filter((t) => t.tag !== 'done').length;
 
   return (
     <div data-mode={running ? 'running' : 'idle'} class="mode-wash min-h-dvh">
       <div class="mx-auto flex min-h-dvh w-full max-w-6xl flex-col px-4 pt-[max(8px,env(safe-area-inset-top))] pb-24 lg:px-6 lg:pb-8">
-        <header class="flex items-center justify-between gap-4 py-4">
+        <header class="flex flex-wrap items-center justify-between gap-x-4 gap-y-3 py-4">
           <div class="flex min-w-0 items-baseline gap-3">
             <p class="text-lg font-bold tracking-tight">
               Dev<span class="text-accent">Log</span>
@@ -188,17 +207,76 @@ export function App() {
               {greeting(now, timeZone)} · {dayLabel(now, timeZone)}
             </p>
           </div>
-          {/* Only worth a word when it changes something: everything keeps working offline. */}
-          {!online && (
-            <span role="status" class="inline-flex h-8 shrink-0 items-center gap-2 rounded-full bg-warn/15 px-3 text-sm font-medium text-warn">
-              <Icon name="offline" class="size-[18px]" />
-              Offline
-            </span>
-          )}
+          <div class="flex shrink-0 items-center gap-2 lg:order-last">
+            {/* Only worth a word when it changes something: everything keeps working offline. */}
+            {!online && (
+              <span role="status" class="inline-flex h-8 items-center gap-2 rounded-full bg-warn/15 px-3 text-sm font-medium text-warn">
+                <Icon name="offline" class="size-[18px]" />
+                <span class="hidden sm:inline">Offline</span>
+              </span>
+            )}
+            <button
+              type="button"
+              onClick={() => setSettingsOpen(true)}
+              aria-label="Settings: daily targets"
+              title="Daily targets"
+              class="press state-layer grid size-11 place-items-center rounded-full bg-surface-high text-muted hover:text-fg"
+            >
+              <Icon name="settings" class="size-5" />
+            </button>
+          </div>
+
+          {/* Screen switch. Phone: Timer / Tasks / Stats. Wide: Focus (timer + tasks) / Stats (Jakob: a familiar tab bar). */}
+          <nav aria-label="Screens" class="order-last w-full lg:order-none lg:w-auto lg:flex-1 lg:px-6">
+            <div role="tablist" class="mx-auto grid max-w-md grid-cols-3 gap-1 rounded-full bg-surface-high/80 p-1 lg:max-w-xs lg:grid-cols-2">
+              {(
+                [
+                  { id: 'timer', label: 'Timer', icon: 'timer', wide: false },
+                  { id: 'tasks', label: 'Tasks', icon: 'list', wide: false },
+                  { id: 'timer', label: 'Focus', icon: 'timer', wide: true },
+                  { id: 'stats', label: 'Stats', icon: 'chart', wide: null },
+                ] as const
+              ).map((tab) => {
+                const active = tab.wide === true ? screen !== 'stats' : screen === tab.id;
+                const shown = tab.wide === null ? 'flex' : tab.wide ? 'hidden lg:flex' : 'flex lg:hidden';
+                return (
+                  <button
+                    key={tab.label}
+                    type="button"
+                    role="tab"
+                    aria-selected={active}
+                    onClick={() => setScreen(tab.id)}
+                    class={`press relative ${shown} min-h-11 items-center justify-center gap-2 rounded-full px-3 text-sm font-medium transition-colors ${
+                      active ? 'bg-surface-highest text-fg shadow-sm' : 'text-muted hover:text-fg'
+                    }`}
+                  >
+                    <Icon name={tab.icon} class="size-[18px]" />
+                    {tab.label}
+                    {tab.id === 'tasks' && openCount > 0 && (
+                      <span class="grid min-w-5 place-items-center rounded-full bg-accent px-1 text-[11px] font-bold text-on-accent tabular-nums">{openCount}</span>
+                    )}
+                    {tab.id === 'timer' && running && !active && <span aria-label="running" class="size-2 animate-glow rounded-full bg-accent" />}
+                  </button>
+                );
+              })}
+            </div>
+          </nav>
         </header>
 
-        <main class="grid flex-1 grid-cols-[minmax(0,1fr)] gap-5 lg:grid-cols-[minmax(320px,380px)_minmax(0,1fr)] lg:items-start lg:gap-8">
-          <div ref={timerRef}>
+        {screen === 'stats' && (
+          <main class="flex-1">
+            {load.state === 'ready' ? (
+              <StatsView tasks={tasks} today={today} nowMs={nowMs} timeZone={timeZone} targets={targets} onEditTargets={() => setSettingsOpen(true)} />
+            ) : (
+              <div class="h-96 animate-pulse rounded-[28px] bg-surface" aria-label="Loading stats" />
+            )}
+          </main>
+        )}
+
+        <main
+          class={`grid flex-1 grid-cols-[minmax(0,1fr)] gap-5 lg:grid-cols-[minmax(320px,380px)_minmax(0,1fr)] lg:items-start lg:gap-8 ${screen === 'stats' ? 'hidden' : ''}`}
+        >
+          <div ref={timerRef} class={screen === 'tasks' ? 'hidden lg:block' : ''}>
             <TimerPanel
               task={selected}
               nowMs={nowMs}
@@ -208,7 +286,7 @@ export function App() {
             />
           </div>
 
-          <div class="lg:row-span-2">
+          <div class={`lg:row-span-2 ${screen === 'timer' ? 'hidden lg:block' : ''}`}>
             {load.state === 'loading' && <div class="h-96 animate-pulse rounded-[28px] bg-surface" aria-label="Loading tasks" />}
             {load.state === 'error' && (
               <p role="alert" class="rounded-[28px] bg-surface p-5 text-error">
@@ -232,7 +310,7 @@ export function App() {
             )}
           </div>
 
-          <div class="lg:col-start-1">
+          <div class={`lg:col-start-1 ${screen === 'tasks' ? 'hidden lg:block' : ''}`}>
             <Reports today={today} tasks={tasks} onToast={setToast} />
           </div>
         </main>
@@ -246,6 +324,18 @@ export function App() {
           <span>DevLog v{__APP_VERSION__} · stored on this device only</span>
         </footer>
       </div>
+
+      <SettingsDialog
+        open={settingsOpen}
+        targets={targets}
+        onClose={() => setSettingsOpen(false)}
+        onSave={(next) => {
+          setTargets(next);
+          saveTargets(next);
+          setSettingsOpen(false);
+          setToast('Daily targets saved');
+        }}
+      />
 
       {showMini && (
         <div class="fixed inset-x-0 bottom-0 z-40 animate-rise px-3 pb-[max(12px,env(safe-area-inset-bottom))] lg:hidden">

@@ -1,5 +1,14 @@
 # Changelog
 
+## 2026-11-03 02:00
+
+- feat(stats): Stats screen: today's story points, tasks done and focus time as rings against daily targets; activity and on-target streaks; finished-today list
+- feat(stats): last 7 days chart switchable between Time, Points and Tasks with the target line; weekly review against the week before (sessions, best day, top task, longest streak)
+- feat(stats): where the time went by quadrant and by task, with minutes per story point; up to five plain-language insights (firefighting, low-value time, sizing, trend, peak hour, blockers)
+- feat(settings): daily targets for tasks, story points and focus time (⚙), kept on the device
+- feat(ui): screen switch: Timer / Tasks / Stats on phones, Focus / Stats on wide screens; open-task badge and running dot
+- feat(timer): every stopwatch run is saved with its start and end so time can be placed on days
+
 ## 2026-11-03 00:30
 
 - feat(timer): stopwatch per task replaces the Pomodoro: Start counts up from 0, Stop keeps the total, one running at a time, survives reloads; Reset (undoable) and Done beside the big Start/Stop
