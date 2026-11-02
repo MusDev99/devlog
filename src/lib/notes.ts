@@ -1,10 +1,26 @@
-/** Pure card rules: no storage, no clock. A note is a card on the board; its tag is its column. */
+/** Pure task rules: no storage, no clock. A note is a task: a status (tag), a quadrant, a size and a timer. */
 
-/** Column order on the board. */
+/** Status order. */
 export const TAGS = ['todo', 'doing', 'blocker', 'done'] as const;
 export type Tag = (typeof TAGS)[number];
 
 export const TAG_LABELS: Record<Tag, string> = { todo: 'To do', doing: 'Doing', blocker: 'Blocked', done: 'Done' };
+
+/** Eisenhower quadrants in reading order of the 2×2 grid: rows important / not, columns urgent / not. */
+export const QUADRANTS = ['do', 'schedule', 'delegate', 'eliminate'] as const;
+export type Quadrant = (typeof QUADRANTS)[number];
+
+export const QUADRANT_LABELS: Record<Quadrant, { name: string; hint: string }> = {
+  do: { name: 'Do first', hint: 'Urgent · Important' },
+  schedule: { name: 'Schedule', hint: 'Not urgent · Important' },
+  delegate: { name: 'Delegate', hint: 'Urgent · Not important' },
+  eliminate: { name: 'Eliminate', hint: 'Not urgent · Not important' },
+};
+
+/** T-shirt sizes as points. */
+export const SIZES = [1, 3, 5] as const;
+export type Size = (typeof SIZES)[number];
+export const SIZE_LABELS: Record<Size, string> = { 1: 'S', 3: 'M', 5: 'L' };
 
 export const MAX_NOTE_LENGTH = 500;
 
@@ -16,9 +32,25 @@ export type Note = {
   createdAt: string;
   /** `YYYY-MM-DD` in the user's zone of the last change (added or moved): drives standup and recap. */
   day: string;
-  /** ISO 8601 UTC of the last move between columns; absent until the card first moves. */
+  /** ISO 8601 UTC of the last status change; absent until the task first changes status. */
   movedAt?: string;
+  /** Absent on tasks from before the matrix: they read as `schedule`. */
+  quadrant?: Quadrant;
+  /** Absent reads as 1 (S). */
+  size?: Size;
+  /** Time on finished timer runs, in ms. */
+  spentMs?: number;
+  /** ISO 8601 UTC while the timer runs; at most one task has it. */
+  startedAt?: string;
 };
+
+export const quadrantOf = (n: Note): Quadrant => n.quadrant ?? 'schedule';
+export const sizeOf = (n: Note): Size => n.size ?? 1;
+
+/** S → M → L → S: one tap per step (Fitts), only three choices (Hick). */
+export function nextSize(size: Size): Size {
+  return SIZES[(SIZES.indexOf(size) + 1) % SIZES.length] ?? 1;
+}
 
 export type Draft = { text: string; tag: Tag };
 
@@ -45,12 +77,47 @@ export function validateDraft(draft: Draft): string | null {
   return null;
 }
 
-/** Where the quick "next" button sends a card (Fitts: one tap for the usual move). Done has no next. */
-export const NEXT_TAG: Record<Tag, Tag | null> = { todo: 'doing', doing: 'done', blocker: 'doing', done: null };
+/** Elapsed time on a task at `nowMs`: finished runs plus the one running. */
+export function elapsedMs(note: Note, nowMs: number): number {
+  const running = note.startedAt ? Math.max(0, nowMs - Date.parse(note.startedAt)) : 0;
+  return (note.spentMs ?? 0) + running;
+}
 
-/** A card moved to `tag` at `at`; `day` is that moment's day in the user's zone. */
+/** Stop a running timer, banking its time. A stopped task comes back unchanged. */
+export function stopTimer(note: Note, at: Date): Note {
+  if (!note.startedAt) return note;
+  const stopped: Note = { ...note, spentMs: elapsedMs(note, at.getTime()) };
+  delete stopped.startedAt;
+  return stopped;
+}
+
+/** A task changed to status `tag` at `at`; `day` is that moment's day in the user's zone. Only Doing keeps a timer running. */
 export function moveNote(note: Note, tag: Tag, at: Date, day: string): Note {
-  return { ...note, tag, movedAt: at.toISOString(), day };
+  const moved = { ...note, tag, movedAt: at.toISOString(), day };
+  return tag === 'doing' ? moved : stopTimer(moved, at);
+}
+
+/**
+ * Start `id`'s timer: any other running timer stops first (one at a time), and the task becomes Doing.
+ * Returns only the tasks that changed, ready to save.
+ */
+export function startTimer(notes: Note[], id: string, at: Date, day: string): Note[] {
+  const target = notes.find((n) => n.id === id);
+  if (!target || target.startedAt || target.tag === 'done') return [];
+  const others = notes.filter((n) => n.id !== id && n.startedAt).map((n) => stopTimer(n, at));
+  const doing = target.tag === 'doing' ? target : moveNote(target, 'doing', at, day);
+  return [...others, { ...doing, startedAt: at.toISOString() }];
+}
+
+/** "1:05:09" while running, "1h 05m" / "12m" / "0m" at rest. */
+export function formatDuration(ms: number, running: boolean): string {
+  const total = Math.floor(ms / 1000);
+  const h = Math.floor(total / 3600);
+  const m = Math.floor((total % 3600) / 60);
+  const s = total % 60;
+  const pad = (n: number) => String(n).padStart(2, '0');
+  if (running) return h > 0 ? `${h}:${pad(m)}:${pad(s)}` : `${m}:${pad(s)}`;
+  return h > 0 ? `${h}h ${pad(m)}m` : `${m}m`;
 }
 
 /** Runtime guard for rows read back from IndexedDB (old or corrupt rows are skipped, never crash). */
@@ -63,6 +130,10 @@ export function isNote(value: unknown): value is Note {
     typeof v.createdAt === 'string' &&
     typeof v.day === 'string' &&
     (v.movedAt === undefined || typeof v.movedAt === 'string') &&
+    (v.quadrant === undefined || QUADRANTS.includes(v.quadrant as Quadrant)) &&
+    (v.size === undefined || SIZES.includes(v.size as Size)) &&
+    (v.spentMs === undefined || (typeof v.spentMs === 'number' && v.spentMs >= 0)) &&
+    (v.startedAt === undefined || typeof v.startedAt === 'string') &&
     TAGS.includes(v.tag as Tag)
   );
 }

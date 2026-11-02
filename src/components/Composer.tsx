@@ -1,13 +1,13 @@
 import { useState } from 'preact/hooks';
-import { MAX_NOTE_LENGTH, parseDraft, TAG_LABELS, validateDraft, type Draft, type Tag } from '../lib/notes.ts';
+import { MAX_NOTE_LENGTH, parseDraft, validateDraft, type Draft } from '../lib/notes.ts';
 import { useSpeech } from '../lib/speech.ts';
 import { Icon } from './Icon.tsx';
 
-type Props = { target: Tag; onAdd: (draft: Draft) => Promise<void> };
+type Props = { target: string; onAdd: (draft: Draft) => Promise<void> };
 
 /**
- * Bottom-anchored composer (Fitts: thumb reach). Hick: no column picker here, a card goes to the
- * selected column; `b:` / `todo:` / `done:` prefixes still pick one without tapping.
+ * Bottom-anchored composer (Fitts: thumb reach). Hick: no pickers here, a task goes to the selected
+ * quadrant as To do; `wip:` / `b:` / `done:` prefixes still set its status without tapping.
  */
 export function Composer({ target, onAdd }: Props) {
   const [text, setText] = useState('');
@@ -18,7 +18,7 @@ export function Composer({ target, onAdd }: Props) {
   async function submit(e: Event) {
     e.preventDefault();
     const sent = text;
-    const draft = parseDraft(sent, target);
+    const draft = parseDraft(sent, 'todo');
     const problem = validateDraft(draft);
     setError(problem);
     if (problem) return;
@@ -43,7 +43,7 @@ export function Composer({ target, onAdd }: Props) {
       <div class="mx-auto flex max-w-2xl items-center gap-2">
         <div class="flex min-h-12 min-w-0 flex-1 items-center rounded-full bg-surface-highest pl-4 focus-within:outline-2 focus-within:outline-primary">
           <label class="sr-only" for="note-text">
-            New card in {TAG_LABELS[target]}
+            New task in {target}
           </label>
           <input
             id="note-text"
@@ -52,7 +52,7 @@ export function Composer({ target, onAdd }: Props) {
             maxLength={MAX_NOTE_LENGTH + 20}
             enterKeyHint="send"
             autoComplete="off"
-            placeholder={`Add to ${TAG_LABELS[target]}…`}
+            placeholder={`Add to ${target}…`}
             aria-invalid={error ? true : undefined}
             aria-describedby={error ? 'note-error' : undefined}
             class="min-h-11 min-w-0 flex-1 bg-transparent text-base text-fg outline-none placeholder:text-muted"
