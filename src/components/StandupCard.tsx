@@ -48,7 +48,7 @@ export function StandupCard({ today, cards, onToast }: Props) {
           ))}
         </div>
       ) : (
-        <p class="mt-3 leading-6 text-muted">Builds yesterday / today / blockers from your board, ready to paste into your team chat.</p>
+        <p class="mt-3 leading-6 text-muted">Builds yesterday / today / blockers from your tasks, ready to paste into your team chat.</p>
       )}
 
       <div class="mt-5 flex gap-2">
@@ -73,7 +73,7 @@ export function StandupCard({ today, cards, onToast }: Props) {
         )}
       </div>
 
-      <p class="mt-3 text-xs leading-5 text-muted">Built on this device from your cards. Nothing is sent anywhere.</p>
+      <p class="mt-3 text-xs leading-5 text-muted">Built on this device from your tasks. Nothing is sent anywhere.</p>
     </section>
   );
 }

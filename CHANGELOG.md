@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-11-02 15:30
+
+- feat(matrix): Eisenhower dashboard replaces the kanban board: Do first / Schedule / Delegate / Eliminate on urgent × important axes
+- feat(matrix): drag tasks by a handle with mouse or touch onto a quadrant or Done; phone uses a 2×2 selector, wide screens the full grid
+- feat(matrix): T-shirt size per task (S 1 / M 3 / L 5) with points per quadrant
+- feat(matrix): start/stop timer per task, one at a time, survives reloads; running bar with Stop; tracked time per quadrant
+- feat: status (To do / Doing / Blocked / Done) stays per task, so the standup and Friday recap keep working; old cards land in Schedule as size S
+
 ## 2026-11-02 00:30
 
 - feat(board): kanban board replaces the day list: To do / Doing / Blocked / Done, one persistent board
