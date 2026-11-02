@@ -1,22 +1,22 @@
 import { useState } from 'preact/hooks';
-import { MAX_NOTE_LENGTH, parseDraft, validateDraft, type Draft } from '../lib/notes.ts';
+import { MAX_NOTE_LENGTH, parseDraft, SIZES, validateDraft, type Draft, type Size } from '../lib/notes.ts';
 import { useSpeech } from '../lib/speech.ts';
 import { Icon } from './Icon.tsx';
 
-type Props = { target: string; onAdd: (draft: Draft) => Promise<void> };
+type Props = { onAdd: (draft: Draft, size: Size, focus: boolean) => Promise<void> };
 
 /**
- * Bottom-anchored composer (Fitts: thumb reach). Hick: no pickers here, a task goes to the selected
- * quadrant as To do; `wip:` / `b:` / `done:` prefixes still set its status without tapping.
+ * Add row: text (or voice), size, and two ways to add. New tasks land in Unsorted.
+ * 🍅 adds and focuses the timer on it in one tap (Fitts); `wip:` / `b:` / `done:` prefixes set a status.
  */
-export function Composer({ target, onAdd }: Props) {
+export function Composer({ onAdd }: Props) {
   const [text, setText] = useState('');
+  const [size, setSize] = useState<Size>(1);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const speech = useSpeech((heard) => setText((t) => (t ? `${t} ${heard}` : heard)));
 
-  async function submit(e: Event) {
-    e.preventDefault();
+  async function submit(focus: boolean) {
     const sent = text;
     const draft = parseDraft(sent, 'todo');
     const problem = validateDraft(draft);
@@ -24,7 +24,7 @@ export function Composer({ target, onAdd }: Props) {
     if (problem) return;
     setSaving(true);
     try {
-      await onAdd(draft);
+      await onAdd(draft, size, focus);
       // Clear only what was saved: anything typed while saving stays in the field.
       setText((current) => (current.startsWith(sent) ? current.slice(sent.length).trimStart() : current));
     } catch {
@@ -34,16 +34,20 @@ export function Composer({ target, onAdd }: Props) {
     }
   }
 
+  const square = 'state-layer grid size-12 shrink-0 place-items-center rounded-2xl';
   return (
     <form
-      onSubmit={submit}
-      class="sticky bottom-0 -mx-4 rounded-t-[28px] bg-surface-high px-4 pt-3 pb-[max(12px,env(safe-area-inset-bottom))] shadow-[0_-4px_16px_rgb(0_0_0/0.35)]"
-      aria-label="Add a note"
+      onSubmit={(e) => {
+        e.preventDefault();
+        void submit(false);
+      }}
+      aria-label="Add a task"
     >
-      <div class="mx-auto flex max-w-2xl items-center gap-2">
-        <div class="flex min-h-12 min-w-0 flex-1 items-center rounded-full bg-surface-highest pl-4 focus-within:outline-2 focus-within:outline-primary">
+      <div class="flex flex-wrap items-center gap-2 sm:flex-nowrap">
+        {/* Phone: the text gets a full line (Fitts); the controls sit under it, to the right. */}
+        <div class="flex min-h-12 w-full min-w-0 items-center rounded-2xl sm:w-auto sm:flex-1 border border-line bg-surface-high pl-4 focus-within:outline-2 focus-within:outline-primary">
           <label class="sr-only" for="note-text">
-            New task in {target}
+            New task
           </label>
           <input
             id="note-text"
@@ -52,7 +56,7 @@ export function Composer({ target, onAdd }: Props) {
             maxLength={MAX_NOTE_LENGTH + 20}
             enterKeyHint="send"
             autoComplete="off"
-            placeholder={`Add to ${target}…`}
+            placeholder="What are you focusing on?"
             aria-invalid={error ? true : undefined}
             aria-describedby={error ? 'note-error' : undefined}
             class="min-h-11 min-w-0 flex-1 bg-transparent text-base text-fg outline-none placeholder:text-muted"
@@ -62,26 +66,46 @@ export function Composer({ target, onAdd }: Props) {
               type="button"
               onClick={speech.toggle}
               aria-pressed={speech.listening}
-              aria-label={speech.listening ? 'Stop dictation' : 'Dictate a note'}
+              aria-label={speech.listening ? 'Stop dictation' : 'Dictate a task'}
               class={`state-layer mr-0.5 grid size-11 shrink-0 place-items-center rounded-full ${
                 speech.listening ? 'bg-primary-container text-on-primary-container' : 'text-muted'
               }`}
             >
-              <Icon name={speech.listening ? 'stop' : 'mic'} class="size-6" />
+              <Icon name={speech.listening ? 'stop' : 'mic'} class="size-5" />
             </button>
           )}
         </div>
         <button
-          type="submit"
+          type="button"
           disabled={saving}
-          class="state-layer inline-flex min-h-12 shrink-0 items-center gap-2 rounded-2xl bg-primary px-4 font-medium text-on-primary shadow-md disabled:opacity-60"
+          onClick={() => void submit(true)}
+          aria-label="Add and focus on it"
+          title="Add and focus on it"
+          class={`${square} ml-auto border border-line bg-surface-high text-xl disabled:opacity-60 sm:ml-0`}
         >
-          <Icon name="send" class="size-5" />
-          {saving ? 'Saving…' : 'Add'}
+          <span aria-hidden="true">🍅</span>
+        </button>
+        <label class="sr-only" for="note-size">
+          Size in story points
+        </label>
+        <select
+          id="note-size"
+          value={size}
+          onChange={(e) => setSize(Number(e.currentTarget.value) as Size)}
+          class="min-h-12 shrink-0 rounded-2xl border border-line bg-surface-high px-2 text-sm font-medium text-fg"
+        >
+          {SIZES.map((s) => (
+            <option key={s} value={s}>
+              {s} SP
+            </option>
+          ))}
+        </select>
+        <button type="submit" disabled={saving} aria-label="Add task" class={`${square} bg-primary text-on-primary shadow-md disabled:opacity-60`}>
+          <Icon name="add" class="size-6" />
         </button>
       </div>
       {error && (
-        <p id="note-error" role="alert" class="mx-auto mt-2 max-w-2xl px-4 text-sm text-error">
+        <p id="note-error" role="alert" class="mt-2 px-1 text-sm text-error">
           {error}
         </p>
       )}

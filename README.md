@@ -1,6 +1,6 @@
 # 🎙️ DevLog
 
-A personal task dashboard on your phone: an urgent × important (Eisenhower) matrix with T-shirt sizes and a timer per task, that turns into a ready-to-paste standup each morning. Offline-first PWA, notes stay on your device. Free to run: a static site with no server, no AI and no API keys.
+A Pomodoro focus timer next to your Session Tasks on an urgent × important (Eisenhower) matrix, with story points and 🍅 per task, that turns into a ready-to-paste standup each morning. Offline-first PWA, notes stay on your device. Free to run: a static site with no server, no AI and no API keys.
 
 ## ✨ Features
 
@@ -13,7 +13,8 @@ A personal task dashboard on your phone: an urgent × important (Eisenhower) mat
 | 🚦 Post-deploy smoke check, Laws of UX review | ✅ v1.0 |
 | 💸 No AI, no sign-in, no API keys: static site, free to host | ✅ v2.0 |
 | 🗂️ Kanban board: To do / Doing / Blocked / Done, drag and drop on desktop, one-tap moves on the phone | ✅ v2.0 (replaced in v2.1) |
-| 🧭 Eisenhower dashboard (Do first / Schedule / Delegate / Eliminate), drag by touch or mouse, T-shirt sizes S 1 / M 3 / L 5, one start/stop timer at a time | ✅ v2.1 |
+| 🧭 Eisenhower dashboard (Do first / Schedule / Delegate / Eliminate), drag by touch or mouse, T-shirt sizes S 1 / M 3 / L 5, one start/stop timer at a time | ✅ v2.1 (redesigned in v2.2) |
+| 🍅 Pomodoro (Focus 25 / Short 5 / Long 15) for the task you pick, 🍅 per task, Session Tasks with Unsorted, List / Matrix, story points 1 / 3 / 5 | ✅ v2.2 |
 
 ## 🚀 Quick start
 
@@ -31,10 +32,10 @@ Node 22.18+ (tests run TypeScript directly with `node --test`).
 | Path | What |
 |---|---|
 | `src/App.tsx` | Main screen |
-| `src/components/` | `Matrix` (quadrants, drag), `TaskCard`, `Overview` (running timer, totals), `Composer` (add a task), `StandupCard`, `RecapCard` (week recap), `Icon` (inline Material icons) |
+| `src/components/` | `TimerPanel` (Pomodoro ring), `SessionTasks` (List / Matrix, Unsorted, drag), `TaskRow`, `Composer` (add row), `StandupCard`, `RecapCard` (week recap), `Icon` (inline Material icons) |
 | `src/styles.css` | Material Design 3 colour roles as Tailwind `@theme` tokens, `state-layer` utility |
 | `tests/golden/` | Standup golden set (10 note days): the rules keep every blocker and invent nothing |
-| `src/lib/` | Pure logic (`notes.ts` incl. sizes and timer, `matrix.ts`, `standup.ts`, `recap.ts`, `today.ts`), `db.ts` (IndexedDB, the only storage module), `speech.ts`, PWA helpers |
+| `src/lib/` | Pure logic (`notes.ts`, `pomodoro.ts`, `matrix.ts`, `standup.ts`, `recap.ts`, `today.ts`), `db.ts` (IndexedDB, the only storage module), `speech.ts`, PWA helpers |
 | `public/sw.js`, `public/sw-policy.js` | Service worker and its tested routing rules |
 | `build/sw-assets.ts` | Vite plugin: list of hashed files to precache |
 | `vercel.json` | Security headers, CSP, cache headers |
@@ -44,10 +45,10 @@ Node 22.18+ (tests run TypeScript directly with `node --test`).
 
 ## 💡 Tips
 
-- New tasks go to the selected quadrant as To do. Start with `wip:`, `b:` (blocked) or `done:` to set the status without tapping.
-- Drag a task by its ⠿ handle onto another quadrant (or onto **Done**); on a phone, drop it on the 2×2 selector at the top. ⋮ does the same without dragging, plus status and Delete.
-- Tap the size chip to cycle S 1 → M 3 → L 5. Tap ▶ to start the timer: it stops any other timer and marks the task Doing; the bar at the top shows what is running.
-- Done tasks older than a week fold into **Earlier**.
+- New tasks land in **Unsorted**; pick their size (1 / 3 / 5 SP) before adding. 🍅 adds a task and focuses the timer on it in one tap. `wip:`, `b:` (blocked) or `done:` set the status.
+- Drag a task onto a quadrant with the mouse, or long-press then drag on a phone. ⋮ moves it without dragging and changes size, status or deletes.
+- Tap a task to focus on it, then **Start**. Each finished Focus round adds a 🍅 to that task and moves to a break (a long one every 4 rounds). The timer keeps running through reloads.
+- Tick the circle to finish a task: it stays crossed out in its quadrant for a week, then moves to **List → Done earlier**.
 - Start the day with **Build standup**, then **Copy** into your team chat.
 - On Friday the **Friday recap** opens by itself (shipped / in progress / blockers for the week); other days tap **Week so far**.
 - Voice uses the browser's own speech service (Chrome/Safari); the mic button hides where it is missing.

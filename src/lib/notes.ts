@@ -1,4 +1,4 @@
-/** Pure task rules: no storage, no clock. A note is a task: a status (tag), a quadrant, a size and a timer. */
+/** Pure task rules: no storage, no clock. A note is a task: a status (tag), a place on the matrix, a size and its 🍅. */
 
 /** Status order. */
 export const TAGS = ['todo', 'doing', 'blocker', 'done'] as const;
@@ -10,12 +10,16 @@ export const TAG_LABELS: Record<Tag, string> = { todo: 'To do', doing: 'Doing', 
 export const QUADRANTS = ['do', 'schedule', 'delegate', 'eliminate'] as const;
 export type Quadrant = (typeof QUADRANTS)[number];
 
-export const QUADRANT_LABELS: Record<Quadrant, { name: string; hint: string }> = {
-  do: { name: 'Do first', hint: 'Urgent · Important' },
-  schedule: { name: 'Schedule', hint: 'Not urgent · Important' },
-  delegate: { name: 'Delegate', hint: 'Urgent · Not important' },
-  eliminate: { name: 'Eliminate', hint: 'Not urgent · Not important' },
+export const QUADRANT_LABELS: Record<Quadrant, { badge: string; name: string; hint: string }> = {
+  do: { badge: 'Q1', name: 'Do now', hint: 'Urgent · Important' },
+  schedule: { badge: 'Q2', name: 'Schedule', hint: 'Not urgent · Important' },
+  delegate: { badge: 'Q3', name: 'Delegate', hint: 'Urgent · Not important' },
+  eliminate: { badge: 'Q4', name: 'Drop', hint: 'Not urgent · Not important' },
 };
+
+/** Where a task sits: not sorted yet, or a quadrant. New tasks start unsorted. */
+export const PLACES = ['unsorted', ...QUADRANTS] as const;
+export type Place = (typeof PLACES)[number];
 
 /** T-shirt sizes as points. */
 export const SIZES = [1, 3, 5] as const;
@@ -35,16 +39,18 @@ export type Note = {
   /** ISO 8601 UTC of the last status change; absent until the task first changes status. */
   movedAt?: string;
   /** Absent on tasks from before the matrix: they read as `schedule`. */
-  quadrant?: Quadrant;
+  quadrant?: Place;
   /** Absent reads as 1 (S). */
   size?: Size;
-  /** Time on finished timer runs, in ms. */
+  /** Finished focus rounds (🍅) credited to this task. */
+  pomodoros?: number;
+  /** Focus time from finished rounds, in ms. */
   spentMs?: number;
-  /** ISO 8601 UTC while the timer runs; at most one task has it. */
+  /** Legacy (per-task stopwatch, v2.1): still accepted on read, no longer used. */
   startedAt?: string;
 };
 
-export const quadrantOf = (n: Note): Quadrant => n.quadrant ?? 'schedule';
+export const placeOf = (n: Note): Place => n.quadrant ?? 'schedule';
 export const sizeOf = (n: Note): Size => n.size ?? 1;
 
 /** S → M → L → S: one tap per step (Fitts), only three choices (Hick). */
@@ -73,40 +79,18 @@ export function parseDraft(raw: string, fallback: Tag): Draft {
 export function validateDraft(draft: Draft): string | null {
   if (!draft.text) return 'Write something first.';
   if (draft.text.length > MAX_NOTE_LENGTH) return `Keep it under ${MAX_NOTE_LENGTH} characters (${draft.text.length} now).`;
-  if (!TAGS.includes(draft.tag)) return 'Pick a column.';
+  if (!TAGS.includes(draft.tag)) return 'Pick a status.';
   return null;
 }
 
-/** Elapsed time on a task at `nowMs`: finished runs plus the one running. */
-export function elapsedMs(note: Note, nowMs: number): number {
-  const running = note.startedAt ? Math.max(0, nowMs - Date.parse(note.startedAt)) : 0;
-  return (note.spentMs ?? 0) + running;
-}
-
-/** Stop a running timer, banking its time. A stopped task comes back unchanged. */
-export function stopTimer(note: Note, at: Date): Note {
-  if (!note.startedAt) return note;
-  const stopped: Note = { ...note, spentMs: elapsedMs(note, at.getTime()) };
-  delete stopped.startedAt;
-  return stopped;
-}
-
-/** A task changed to status `tag` at `at`; `day` is that moment's day in the user's zone. Only Doing keeps a timer running. */
+/** A task changed to status `tag` at `at`; `day` is that moment's day in the user's zone. */
 export function moveNote(note: Note, tag: Tag, at: Date, day: string): Note {
-  const moved = { ...note, tag, movedAt: at.toISOString(), day };
-  return tag === 'doing' ? moved : stopTimer(moved, at);
+  return { ...note, tag, movedAt: at.toISOString(), day };
 }
 
-/**
- * Start `id`'s timer: any other running timer stops first (one at a time), and the task becomes Doing.
- * Returns only the tasks that changed, ready to save.
- */
-export function startTimer(notes: Note[], id: string, at: Date, day: string): Note[] {
-  const target = notes.find((n) => n.id === id);
-  if (!target || target.startedAt || target.tag === 'done') return [];
-  const others = notes.filter((n) => n.id !== id && n.startedAt).map((n) => stopTimer(n, at));
-  const doing = target.tag === 'doing' ? target : moveNote(target, 'doing', at, day);
-  return [...others, { ...doing, startedAt: at.toISOString() }];
+/** A finished focus round: one more 🍅 and its minutes. */
+export function creditPomodoro(note: Note, focusMs: number): Note {
+  return { ...note, pomodoros: (note.pomodoros ?? 0) + 1, spentMs: (note.spentMs ?? 0) + focusMs };
 }
 
 /** "1:05:09" while running, "1h 05m" / "12m" / "0m" at rest. */
@@ -130,7 +114,8 @@ export function isNote(value: unknown): value is Note {
     typeof v.createdAt === 'string' &&
     typeof v.day === 'string' &&
     (v.movedAt === undefined || typeof v.movedAt === 'string') &&
-    (v.quadrant === undefined || QUADRANTS.includes(v.quadrant as Quadrant)) &&
+    (v.quadrant === undefined || PLACES.includes(v.quadrant as Place)) &&
+    (v.pomodoros === undefined || (Number.isInteger(v.pomodoros) && (v.pomodoros as number) >= 0)) &&
     (v.size === undefined || SIZES.includes(v.size as Size)) &&
     (v.spentMs === undefined || (typeof v.spentMs === 'number' && v.spentMs >= 0)) &&
     (v.startedAt === undefined || typeof v.startedAt === 'string') &&

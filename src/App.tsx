@@ -1,25 +1,28 @@
 import { useEffect, useState } from 'preact/hooks';
-import { Composer } from './components/Composer.tsx';
 import { Icon } from './components/Icon.tsx';
-import { Matrix, type DropTarget } from './components/Matrix.tsx';
-import { Overview } from './components/Overview.tsx';
 import { RecapCard } from './components/RecapCard.tsx';
+import { SessionTasks } from './components/SessionTasks.tsx';
 import { StandupCard } from './components/StandupCard.tsx';
-import { allNotes, deleteNote, saveNote } from './lib/db.ts';
-import { doneList, matrix, stats } from './lib/matrix.ts';
+import { TimerPanel } from './components/TimerPanel.tsx';
+import { PLACE_NAMES } from './components/TaskRow.tsx';
+import { allNotes, deleteNote, loadSession, saveNote, saveSession } from './lib/db.ts';
+import { creditPomodoro, moveNote, TAG_LABELS, type Draft, type Note, type Place, type Size, type Tag } from './lib/notes.ts';
 import {
-  moveNote,
-  nextSize,
-  QUADRANT_LABELS,
-  sizeOf,
-  startTimer,
-  stopTimer,
-  TAG_LABELS,
-  type Draft,
-  type Note,
-  type Quadrant,
-  type Tag,
-} from './lib/notes.ts';
+  complete,
+  formatClock,
+  fullMs,
+  isFinished,
+  isRunning,
+  MODE_LABELS,
+  newSession,
+  pause,
+  remainingMs,
+  reset,
+  start,
+  switchMode,
+  type Mode,
+  type Session,
+} from './lib/pomodoro.ts';
 import { useOnline } from './lib/pwa.ts';
 import { dayKey, dayLabel, greeting } from './lib/today.ts';
 
@@ -36,7 +39,7 @@ export function App() {
   const today = dayKey(now, timeZone);
   const [nowMs, setNowMs] = useState(() => Date.now());
   const [load, setLoad] = useState<Load>({ state: 'loading' });
-  const [active, setActive] = useState<Quadrant>('do');
+  const [session, setSessionState] = useState<Session>(() => loadSession() ?? newSession());
   const [undo, setUndo] = useState<Undo | null>(null);
   const [toast, setToast] = useState<string | null>(null);
 
@@ -50,37 +53,70 @@ export function App() {
   }, []);
 
   const tasks = load.state === 'ready' ? load.tasks : [];
-  const running = tasks.find((n) => n.startedAt) ?? null;
+  const focusTask = tasks.find((n) => n.id === session.taskId) ?? null;
   const update = (fn: (current: Note[]) => Note[]) =>
     setLoad((prev) => ({ state: 'ready', tasks: fn(prev.state === 'ready' ? prev.tasks : []) }));
   const put = (...changed: Note[]) =>
     update((current) => [...current.filter((n) => !changed.some((c) => c.id === n.id)), ...changed]);
+  const setSession = (next: Session) => {
+    setSessionState(next);
+    saveSession(next);
+  };
 
-  // Tick once a second only while a timer runs.
-  useEffect(() => {
-    if (!running) return;
-    setNowMs(Date.now());
-    const timer = setInterval(() => setNowMs(Date.now()), 1000);
-    return () => clearInterval(timer);
-  }, [running?.id]);
-
-  async function save(changed: Note[], undoable?: { message: string; before: Note }) {
+  async function save(changed: Note[], undoable?: Undo) {
     try {
       await Promise.all(changed.map(saveNote));
       put(...changed);
-      setNowMs(Date.now());
       if (undoable) setUndo(undoable);
     } catch {
       setToast('Could not save on this device');
     }
   }
 
-  async function add(draft: Draft) {
+  // Tick once a second only while the timer runs.
+  useEffect(() => {
+    if (!isRunning(session)) return;
+    setNowMs(Date.now());
+    const timer = setInterval(() => setNowMs(Date.now()), 1000);
+    return () => clearInterval(timer);
+  }, [session.endsAt]);
+
+  // A round ran out (also after a reload or a sleeping tab): credit the 🍅 once and set up the next round.
+  useEffect(() => {
+    if (load.state !== 'ready' || !isFinished(session, nowMs)) return;
+    const { next, credit } = complete(session);
+    setSession(next);
+    const task = credit ? focusTask : null;
+    if (task) void save([creditPomodoro(task, fullMs('focus'))]);
+    navigator.vibrate?.([200, 100, 200]);
+    setToast(
+      session.mode === 'focus'
+        ? `Focus complete${task ? ' · +1 🍅' : ''} · time for a ${MODE_LABELS[next.mode].toLowerCase()}`
+        : `${MODE_LABELS[session.mode]} complete`,
+    );
+  }, [nowMs, session, load.state]);
+
+  useEffect(() => {
+    document.title = isRunning(session) ? `${formatClock(remainingMs(session, nowMs))} · ${MODE_LABELS[session.mode]} · DevLog` : 'DevLog';
+  }, [nowMs, session]);
+
+  function startTimer() {
     const at = new Date();
-    const note: Note = { id: crypto.randomUUID(), ...draft, quadrant: active, size: 1, createdAt: at.toISOString(), day: dayKey(at, timeZone) };
+    // Focusing on a task means working on it: the standup sees it as Doing.
+    if (session.mode === 'focus' && focusTask && (focusTask.tag === 'todo' || focusTask.tag === 'blocker')) {
+      void save([moveNote(focusTask, 'doing', at, dayKey(at, timeZone))]);
+    }
+    setNowMs(at.getTime());
+    setSession(start(session, at.getTime()));
+  }
+
+  async function add(draft: Draft, size: Size, focus: boolean) {
+    const at = new Date();
+    const note: Note = { id: crypto.randomUUID(), ...draft, quadrant: 'unsorted', size, createdAt: at.toISOString(), day: dayKey(at, timeZone) };
     await saveNote(note);
     put(note);
-    if (draft.tag === 'done') setToast('Added to Done');
+    if (focus && draft.tag !== 'done') setSession({ ...session, taskId: note.id });
+    if (draft.tag === 'done') setToast('Added as done');
   }
 
   const setStatus = (note: Note, tag: Tag) => {
@@ -88,27 +124,11 @@ export function App() {
     return save([moveNote(note, tag, at, dayKey(at, timeZone))], { message: tag === 'done' ? 'Marked done' : `Status: ${TAG_LABELS[tag]}`, before: note });
   };
 
-  const setQuadrant = (note: Note, quadrant: Quadrant) => {
-    // Re-sorting is planning, not progress: the standup day stays as it was.
-    setActive(quadrant);
-    return save([{ ...note, quadrant }], { message: `Moved to ${QUADRANT_LABELS[quadrant].name}`, before: note });
-  };
-
-  function drop(note: Note, target: DropTarget) {
-    void (target === 'done' ? setStatus(note, 'done') : setQuadrant(note, target));
-  }
-
-  function toggleTimer(note: Note) {
-    const at = new Date();
-    void save(note.startedAt ? [stopTimer(note, at)] : startTimer(tasks, note.id, at, dayKey(at, timeZone)));
-  }
-
   async function remove(note: Note) {
     try {
       await deleteNote(note.id);
       update((current) => current.filter((n) => n.id !== note.id));
-      // Undo brings it back stopped: a deleted task should not keep counting.
-      setUndo({ message: 'Task deleted', before: stopTimer(note, new Date()) });
+      setUndo({ message: 'Task deleted', before: note });
     } catch {
       setToast('Could not save on this device');
     }
@@ -130,57 +150,60 @@ export function App() {
 
   useEffect(() => {
     if (!toast) return;
-    const timer = setTimeout(() => setToast(null), 3000);
+    const timer = setTimeout(() => setToast(null), 4000);
     return () => clearTimeout(timer);
   }, [toast]);
 
-  const actions = {
-    onStatus: (note: Note, tag: Tag) => void setStatus(note, tag),
-    onQuadrant: (note: Note, quadrant: Quadrant) => void setQuadrant(note, quadrant),
-    onSize: (note: Note) => void save([{ ...note, size: nextSize(sizeOf(note)) }]),
-    onTimer: toggleTimer,
-    onDelete: (note: Note) => void remove(note),
-  };
-
   return (
-    <div class="mx-auto flex min-h-dvh w-full max-w-6xl flex-col px-4 pt-[max(8px,env(safe-area-inset-top))]">
-      {/* Material top app bar: supporting date above a large greeting. */}
-      <header class="flex items-start justify-between gap-4 pt-4 pb-5">
+    <div class="mx-auto flex min-h-dvh w-full max-w-6xl flex-col px-4 pt-[max(8px,env(safe-area-inset-top))] pb-6">
+      <header class="flex items-center justify-between gap-4 py-4">
         <div class="min-w-0">
-          <p class="text-sm font-medium tracking-wide text-muted">{dayLabel(now, timeZone)}</p>
-          <h1 class="mt-1 text-[1.75rem] leading-9 font-normal">{greeting(now, timeZone)}</h1>
+          <p class="text-xs font-medium tracking-wide text-muted">{dayLabel(now, timeZone)}</p>
+          <h1 class="text-xl font-semibold">{greeting(now, timeZone)}</h1>
         </div>
-        {/* Only worth a word when it changes something: the dashboard keeps working either way. */}
+        {/* Only worth a word when it changes something: everything keeps working offline. */}
         {!online && (
-          <span role="status" class="mt-1 inline-flex h-8 shrink-0 items-center gap-2 rounded-lg border border-line px-3 text-sm font-medium text-warn">
+          <span role="status" class="inline-flex h-8 shrink-0 items-center gap-2 rounded-lg border border-line px-3 text-sm font-medium text-warn">
             <Icon name="offline" class="size-[18px]" />
             Offline
           </span>
         )}
       </header>
 
-      <main class="flex flex-1 flex-col gap-4 pb-4">
-        {load.state === 'loading' && <div class="h-40 animate-pulse rounded-3xl bg-surface" aria-label="Loading tasks" />}
-        {load.state === 'error' && (
-          <p role="alert" class="rounded-3xl bg-surface p-5 text-error">
-            Could not open this device's storage. Private mode can block it; try a normal window.
-          </p>
-        )}
-        {load.state === 'ready' && (
-          <>
-            <Overview stats={stats(tasks, nowMs)} running={running} nowMs={nowMs} onStop={toggleTimer} />
-            <Matrix
-              views={matrix(tasks, nowMs)}
-              done={doneList(tasks, today)}
-              today={today}
+      <main class="flex flex-1 flex-col gap-4">
+        <div class="grid grid-cols-[minmax(0,1fr)] gap-4 lg:grid-cols-[minmax(320px,380px)_minmax(0,1fr)] lg:items-start">
+          <div class="lg:sticky lg:top-4">
+            <TimerPanel
+              session={session}
               nowMs={nowMs}
-              active={active}
-              onSelect={setActive}
-              onDrop={drop}
-              {...actions}
+              task={focusTask}
+              onMode={(mode: Mode) => setSession(switchMode(session, mode))}
+              onStart={startTimer}
+              onPause={() => setSession(pause(session, Date.now()))}
+              onReset={() => setSession(reset(session))}
             />
-          </>
-        )}
+          </div>
+
+          {load.state === 'loading' && <div class="h-96 animate-pulse rounded-[28px] bg-surface" aria-label="Loading tasks" />}
+          {load.state === 'error' && (
+            <p role="alert" class="rounded-[28px] bg-surface p-5 text-error">
+              Could not open this device's storage. Private mode can block it; try a normal window.
+            </p>
+          )}
+          {load.state === 'ready' && (
+            <SessionTasks
+              tasks={tasks}
+              today={today}
+              focusId={session.taskId}
+              onAdd={add}
+              onSelect={(note) => setSession({ ...session, taskId: note.id === session.taskId ? null : note.id })}
+              onStatus={(note, tag) => void setStatus(note, tag)}
+              onPlace={(note: Note, place: Place) => void save([{ ...note, quadrant: place }], { message: `Moved to ${PLACE_NAMES[place]}`, before: note })}
+              onSize={(note, size) => void save([{ ...note, size }])}
+              onDelete={(note) => void remove(note)}
+            />
+          )}
+        </div>
 
         <div class="grid gap-4 md:grid-cols-2 md:items-start">
           <StandupCard today={today} cards={tasks} onToast={setToast} />
@@ -190,13 +213,17 @@ export function App() {
         <p class="pt-2 text-center text-xs text-muted">DevLog v{__APP_VERSION__} · tasks stored on this device, nothing sent anywhere</p>
       </main>
 
-      {/* Material snackbar: inverse surface, one text action. */}
-      <div aria-live="polite" class="pointer-events-none fixed inset-x-0 bottom-24 flex justify-center px-4">
+      <div aria-live="polite" class="pointer-events-none fixed inset-x-0 bottom-6 flex justify-center px-4">
         {toast && !undo && (
-          <div class="pointer-events-auto min-h-12 rounded-lg bg-inverse px-4 py-3.5 text-sm text-on-inverse shadow-lg">{toast}</div>
+          <div class="pointer-events-auto flex min-h-12 max-w-md items-center gap-2 rounded-2xl bg-inverse py-1 pr-1 pl-4 text-sm font-medium text-on-inverse shadow-lg">
+            {toast}
+            <button type="button" onClick={() => setToast(null)} aria-label="Dismiss" class="state-layer grid size-11 shrink-0 place-items-center rounded-full">
+              <Icon name="close" class="size-5" />
+            </button>
+          </div>
         )}
         {undo && (
-          <div class="pointer-events-auto flex w-full max-w-sm items-center justify-between gap-3 rounded-lg bg-inverse py-1 pr-2 pl-4 text-sm text-on-inverse shadow-lg">
+          <div class="pointer-events-auto flex w-full max-w-sm items-center justify-between gap-3 rounded-2xl bg-inverse py-1 pr-2 pl-4 text-sm text-on-inverse shadow-lg">
             {undo.message}
             <button type="button" onClick={restore} class="state-layer min-h-11 rounded-full px-3 font-medium text-inverse-primary">
               Undo
@@ -204,8 +231,6 @@ export function App() {
           </div>
         )}
       </div>
-
-      <Composer target={QUADRANT_LABELS[active].name} onAdd={add} />
     </div>
   );
 }
