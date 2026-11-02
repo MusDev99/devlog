@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-11-02 22:30
+
+- feat(ui): redesign as a Pomodoro panel beside Session Tasks (ring timer, Focus / Short Break / Long Break, Pause / Resume / Reset)
+- feat(pomodoro): Focus 25 / Short 5 / Long 15 min, long break every 4 rounds; a finished focus round adds a 🍅 and its minutes to the focus task; survives reloads
+- feat(tasks): new tasks land in Unsorted; List / Matrix switch; tinted Q1–Q4 quadrants (Do now, Schedule, Delegate, Drop); done tasks stay crossed out in place for a week; done/total badge
+- feat(tasks): add row with story points (1 / 3 / 5 SP) and 🍅 "add and focus"; drag rows with the mouse or long-press on touch, menu as the no-drag path
+- removed: per-task start/stop stopwatch, overview tiles and the separate Done list (old timer fields are read and ignored)
+
 ## 2026-11-02 15:30
 
 - feat(matrix): Eisenhower dashboard replaces the kanban board: Do first / Schedule / Delegate / Eliminate on urgent × important axes

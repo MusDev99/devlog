@@ -1,49 +1,41 @@
-import { elapsedMs, QUADRANTS, quadrantOf, sizeOf, type Note, type Quadrant, type Tag } from './notes.ts';
+import { PLACES, placeOf, sizeOf, type Note, type Place, type Tag } from './notes.ts';
 
-/** Dashboard layout rules. Pure: `today` and `nowMs` are injected. */
+/** Session Tasks layout rules. Pure: `today` is injected as a `YYYY-MM-DD` key. */
 
-export type QuadrantView = { quadrant: Quadrant; tasks: Note[]; points: number; trackedMs: number };
-export type Stats = { open: number; points: number; trackedMs: number };
+export type PlaceView = { place: Place; tasks: Note[]; points: number; open: number };
 
-/** Done tasks older than this fold into "Earlier" so the list stays short (Miller). */
+/** Done tasks stay crossed out in their place for this long, then only the List's "Earlier" shows them. */
 export const DONE_FRESH_DAYS = 7;
 
 const DAY_MS = 86_400_000;
 const toUtc = (day: string) => Date.parse(`${day}T00:00:00Z`);
 const lastChange = (n: Note) => n.movedAt ?? n.createdAt;
-/** Inside a quadrant: the running task, then Doing, Blocked, To do. */
+/** Open work first (Doing, Blocked, To do), finished last. */
 const STATUS_ORDER: Record<Tag, number> = { doing: 0, blocker: 1, todo: 2, done: 3 };
 
-const byNewest = (a: Note, b: Note) => lastChange(b).localeCompare(lastChange(a));
-const sum = (notes: Note[], f: (n: Note) => number) => notes.reduce((total, n) => total + f(n), 0);
+const isFresh = (n: Note, today: string) => n.tag !== 'done' || toUtc(n.day) >= toUtc(today) - DONE_FRESH_DAYS * DAY_MS;
+const order = (a: Note, b: Note) => STATUS_ORDER[a.tag] - STATUS_ORDER[b.tag] || lastChange(b).localeCompare(lastChange(a));
 
-/** Open tasks per quadrant, in grid order, with their points and tracked time. */
-export function matrix(notes: Note[], nowMs: number): QuadrantView[] {
-  const open = notes
-    .filter((n) => n.tag !== 'done')
-    .sort((a, b) => Number(Boolean(b.startedAt)) - Number(Boolean(a.startedAt)) || STATUS_ORDER[a.tag] - STATUS_ORDER[b.tag] || byNewest(a, b));
-  return QUADRANTS.map((quadrant) => {
-    const tasks = open.filter((n) => quadrantOf(n) === quadrant);
-    return { quadrant, tasks, points: sum(tasks, sizeOf), trackedMs: sum(tasks, (n) => elapsedMs(n, nowMs)) };
+/** Unsorted plus the four quadrants, each with its open work first and this week's done after. */
+export function places(notes: Note[], today: string): PlaceView[] {
+  const visible = notes.filter((n) => isFresh(n, today)).sort(order);
+  return PLACES.map((place) => {
+    const tasks = visible.filter((n) => placeOf(n) === place);
+    const open = tasks.filter((n) => n.tag !== 'done');
+    return { place, tasks, open: open.length, points: open.reduce((sum, n) => sum + sizeOf(n), 0) };
   });
 }
 
-export function stats(notes: Note[], nowMs: number): Stats {
-  const open = notes.filter((n) => n.tag !== 'done');
-  return { open: open.length, points: sum(open, sizeOf), trackedMs: sum(open, (n) => elapsedMs(n, nowMs)) };
+/** One list: open work by place (Unsorted, Q1 … Q4), then this week's done; older done in `earlier`. */
+export function listView(notes: Note[], today: string): { tasks: Note[]; earlier: Note[] } {
+  const rank = (n: Note) => PLACES.indexOf(placeOf(n));
+  const open = notes.filter((n) => n.tag !== 'done').sort((a, b) => rank(a) - rank(b) || order(a, b));
+  const done = notes.filter((n) => n.tag === 'done').sort(order);
+  return { tasks: [...open, ...done.filter((n) => isFresh(n, today))], earlier: done.filter((n) => !isFresh(n, today)) };
 }
 
-/** Done tasks, newest first; older than a week go to `earlier`. */
-export function doneList(notes: Note[], today: string): { recent: Note[]; earlier: Note[] } {
-  const done = notes.filter((n) => n.tag === 'done').sort(byNewest);
-  const cutoff = toUtc(today) - DONE_FRESH_DAYS * DAY_MS;
-  return { recent: done.filter((n) => toUtc(n.day) >= cutoff), earlier: done.filter((n) => toUtc(n.day) < cutoff) };
-}
-
-/** "Today", "Yesterday" or "28 Oct" for a task's last change. */
-export function shortDay(day: string, today: string): string {
-  const diff = Math.round((toUtc(today) - toUtc(day)) / DAY_MS);
-  if (diff === 0) return 'Today';
-  if (diff === 1) return 'Yesterday';
-  return new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short', timeZone: 'UTC' }).format(toUtc(day));
+/** The "8/12" badge: done out of everything on screen. */
+export function progressCount(notes: Note[], today: string): { done: number; total: number } {
+  const visible = notes.filter((n) => isFresh(n, today));
+  return { done: visible.filter((n) => n.tag === 'done').length, total: visible.length };
 }
