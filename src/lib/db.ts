@@ -7,6 +7,19 @@ const STORE = 'notes';
 
 let dbPromise: Promise<IDBDatabase> | null = null;
 
+/**
+ * Ask the browser not to evict this device's tasks under storage pressure (they exist nowhere else).
+ * Installed apps are usually granted at once; elsewhere the browser may say no, which changes nothing.
+ */
+export async function keepStorage(): Promise<boolean> {
+  try {
+    if (!navigator.storage?.persist) return false;
+    return (await navigator.storage.persisted()) || (await navigator.storage.persist());
+  } catch {
+    return false;
+  }
+}
+
 function open(): Promise<IDBDatabase> {
   dbPromise ??= new Promise((resolve, reject) => {
     const req = indexedDB.open(DB_NAME, 1);

@@ -117,6 +117,18 @@
 html {
   color-scheme: dark;
   background: var(--color-bg);
+  /* App feel on phones: no double-tap zoom delay, no font inflation on rotate. */
+  touch-action: manipulation;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+/* Installed: no rubber-band bounce or pull-to-refresh, like a native app. */
+@media (display-mode: standalone) {
+  html,
+  body {
+    overscroll-behavior-y: none;
+  }
 }
 
 body {

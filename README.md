@@ -17,6 +17,7 @@ A stopwatch for each task next to an urgent × important (Eisenhower) matrix, wi
 | 🍅 Pomodoro (Focus 25 / Short 5 / Long 15), Session Tasks with Unsorted, List / Matrix, story points 1 / 3 / 5 | ✅ v2.2 (timer replaced in v2.3) |
 | ⏱️ Stopwatch per task (Start counts up from 0, Stop keeps the total), lean UI: colour by state, one big Start/Stop, live reports, mini player, keyboard shortcuts | ✅ v2.3 |
 | 📊 Stats: daily targets (tasks, story points, focus time), streaks, last 7 days by time / points / tasks, weekly review, time by quadrant and task, insights | ✅ v2.4 |
+| 📲 Mobile-first PWA: bottom tab bar, Install button (iPhone: Add to Home Screen hint), app shortcuts, update prompt, icon badge, persistent storage, fully offline launch | ✅ v2.5 |
 
 ## 🚀 Quick start
 
@@ -46,6 +47,9 @@ Node 22.18+ (tests run TypeScript directly with `node --test`).
 | `.agents/skills/code-review/` | Shared code-review checklist, findings by severity |
 
 ## 💡 Tips
+
+- **Install it**: Android / desktop Chrome or Edge show **Install** in the header. On iPhone or iPad, tap **Share → Add to Home Screen**. Installed, it opens full screen, works offline, shows open tasks on its icon, and long-pressing the icon offers **Timer**, **Add task** and **Stats**.
+- A new version shows **New version ready · Reload**; nothing changes under you until you tap it.
 
 - New tasks land in **Unsorted** (it hides when empty); pick their size (1 / 3 / 5 SP) before adding. ▶ next to the field adds a task and starts its stopwatch. `wip:`, `b:` (blocked) or `done:` set the status.
 - Drag a task onto a quadrant with the mouse, or long-press then drag on a phone. ⋮ moves it without dragging and changes size, status or deletes.
