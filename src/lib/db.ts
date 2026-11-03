@@ -170,13 +170,16 @@ export function saveTargets(targets: Targets): void {
 }
 
 const USER_KEY = 'devlog.user';
-export type User = { email: string; name: string };
+/** `picture`: the Google profile photo URL ('' when there is none). */
+export type User = { email: string; name: string; picture: string };
 
 /** The last signed-in person, so an offline launch can open without asking the server. */
 export function loadUser(): User | null {
   try {
     const value = JSON.parse(loadPref(USER_KEY) ?? 'null') as Partial<User> | null;
-    return value && typeof value.email === 'string' && value.email.includes('@') ? { email: value.email, name: typeof value.name === 'string' ? value.name : '' } : null;
+    return value && typeof value.email === 'string' && value.email.includes('@')
+      ? { email: value.email, name: typeof value.name === 'string' ? value.name : '', picture: googlePicture(value.picture) }
+      : null;
   } catch {
     return null;
   }
@@ -184,4 +187,15 @@ export function loadUser(): User | null {
 
 export function saveUser(user: User | null): void {
   savePref(USER_KEY, user ? JSON.stringify(user) : '');
+}
+
+/** Only Google's image host (the one the CSP allows); anything else shows the initial instead. */
+export function googlePicture(value: unknown): string {
+  if (typeof value !== 'string') return '';
+  try {
+    const url = new URL(value);
+    return url.protocol === 'https:' && url.hostname.endsWith('.googleusercontent.com') ? url.href : '';
+  } catch {
+    return '';
+  }
 }

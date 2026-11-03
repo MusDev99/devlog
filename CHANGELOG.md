@@ -1,5 +1,15 @@
 # Changelog
 
+## 2026-11-03 19:30
+
+- feat(auth): the Google profile photo URL is read at sign-in (scope `profile`), kept in the session, shown as the avatar in the header and Settings (initial as fallback), and saved in a new `picture_url` column of the **Users** tab; existing sheets get the header added
+- security: only `https://*.googleusercontent.com` photo URLs are accepted (server and browser); the CSP `img-src` allows that host and nothing else new
+
+## 2026-11-03 18:30
+
+- feat(points): story points on the Fibonacci scale: 1, 2, 3, 5, 8, 13, 21 (was 1 / 3 / 5); existing tasks keep their points
+- feat(points): the row menu's point chips wrap on phones and the chosen one is clearly highlighted; the daily SP target now goes up to 100
+
 ## 2026-11-03 17:30
 
 - fix(api): every function crashed on Vercel (`500 FUNCTION_INVOCATION_FAILED`), so the login page never showed: extensionless relative imports fail in Node ES modules. Imports now end in `.js`; a test enforces it

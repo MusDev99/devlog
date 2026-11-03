@@ -89,7 +89,21 @@ export function buildAuthUrl(p: { clientId: string; redirectUri: string; state: 
 }
 
 export type Jwks = { keys: Array<JsonWebKey & { kid?: string }> };
-export type IdTokenResult = { ok: true; sub: string; email: string; name: string } | { ok: false; reason: string };
+export type IdTokenResult = { ok: true; sub: string; email: string; name: string; picture: string } | { ok: false; reason: string };
+
+/**
+ * The Google profile photo, only from Google's own image host (the CSP allows just that host for images).
+ * Anything else becomes '' so a token can never point the app at a tracking pixel.
+ */
+export function profilePicture(value: unknown): string {
+  if (typeof value !== 'string' || value.length > 1000) return '';
+  try {
+    const url = new URL(value);
+    return url.protocol === 'https:' && url.hostname.endsWith('.googleusercontent.com') ? url.href : '';
+  } catch {
+    return '';
+  }
+}
 
 /** Verifies the RS256 signature via JWKS, then iss / aud / exp / nonce / email_verified. */
 export async function verifyIdToken(
@@ -116,7 +130,7 @@ export async function verifyIdToken(
     if (c.nonce !== expect.nonce) return { ok: false, reason: 'nonce' };
     if (typeof c.sub !== 'string' || typeof c.email !== 'string') return { ok: false, reason: 'claims' };
     if (c.email_verified !== true && c.email_verified !== 'true') return { ok: false, reason: 'email_unverified' };
-    return { ok: true, sub: c.sub, email: c.email.toLowerCase(), name: typeof c.name === 'string' ? c.name.slice(0, 200) : '' };
+    return { ok: true, sub: c.sub, email: c.email.toLowerCase(), name: typeof c.name === 'string' ? c.name.slice(0, 200) : '', picture: profilePicture(c.picture) };
   } catch {
     return { ok: false, reason: 'invalid' };
   }
@@ -153,13 +167,15 @@ async function verify(token: string | undefined, secret: string, typ: Typ, nowMs
   }
 }
 
-export type SessionUser = { email: string; name: string };
+export type SessionUser = { email: string; name: string; picture: string };
 
 export const createSession = (secret: string, user: SessionUser, nowMs: number) => sign(secret, 's', user, SESSION_TTL_SECONDS, nowMs);
 
 export async function readSession(token: string | undefined, secret: string, nowMs: number): Promise<SessionUser | null> {
   const body = await verify(token, secret, 's', nowMs);
-  return body && typeof body.email === 'string' ? { email: body.email, name: typeof body.name === 'string' ? body.name : '' } : null;
+  return body && typeof body.email === 'string'
+    ? { email: body.email, name: typeof body.name === 'string' ? body.name : '', picture: profilePicture(body.picture) }
+    : null;
 }
 
 export type OAuthState = { state: string; nonce: string; verifier: string };

@@ -8,6 +8,7 @@ import {
   MAX_NOTE_LENGTH,
   moveNote,
   nextSize,
+  SIZES,
   parseDraft,
   placeOf,
   resetTimer,
@@ -45,8 +46,9 @@ test('moveNote changes status and stamps the move day, keeps the task', () => {
 
 const task = (id: string, extra: Partial<Note> = {}): Note => ({ id, text: id, tag: 'todo', createdAt: '2026-10-27T01:00:00Z', day: '2026-10-27', ...extra });
 
-test('nextSize cycles S → M → L → S', () => {
-  assert.deepEqual([nextSize(1), nextSize(3), nextSize(5)], [3, 5, 1]);
+test('story points follow Fibonacci up to 21, and nextSize walks the scale', () => {
+  assert.deepEqual(SIZES, [1, 2, 3, 5, 8, 13, 21]);
+  assert.deepEqual(SIZES.map(nextSize), [2, 3, 5, 8, 13, 21, 1]);
 });
 
 const AT = new Date('2026-10-28T10:00:00Z');
@@ -116,7 +118,9 @@ test('isNote skips corrupt rows', () => {
   assert.equal(isNote({ id: '1', text: 't', tag: 'todo', createdAt: 'x', day: 'y', quadrant: 'unsorted', pomodoros: 2 }), true);
   assert.equal(isNote({ id: '1', text: 't', tag: 'todo', createdAt: 'x', day: 'y', pomodoros: 1.5 }), false);
   assert.equal(isNote({ id: '1', text: 't', tag: 'doing', createdAt: 'x', day: 'y', startedAt: 'z' }), true, 'legacy stopwatch rows still read');
-  assert.equal(isNote({ id: '1', text: 't', tag: 'todo', createdAt: 'x', day: 'y', size: 2 }), false);
+  assert.equal(isNote({ id: '1', text: 't', tag: 'todo', createdAt: 'x', day: 'y', size: 13 }), true);
+  assert.equal(isNote({ id: '1', text: 't', tag: 'todo', createdAt: 'x', day: 'y', size: 4 }), false, 'not on the scale');
+  assert.equal(isNote({ id: '1', text: 't', tag: 'todo', createdAt: 'x', day: 'y', size: 34 }), false, 'above 21');
   assert.equal(isNote({ id: '1', text: 't', tag: 'todo', createdAt: 'x', day: 'y', spentMs: -1 }), false);
   assert.equal(isNote({ id: '1', text: 't', tag: 'todo', createdAt: 'x', day: 'y', runs: [{ s: 'a', e: 'b' }] }), true);
   assert.equal(isNote({ id: '1', text: 't', tag: 'todo', createdAt: 'x', day: 'y', runs: [{ s: 'a' }] }), false);

@@ -55,7 +55,8 @@ export function TaskRow({ note, nowMs, focused, showPlace, onPointerDown, onSele
   const logged = spent < 60_000 ? `${Math.floor(spent / 1000)}s` : formatDuration(spent, false);
   const timing = done ? taskTiming(note, nowMs) : null;
   const span = timing?.start && timing.pausedMs >= 60_000 ? formatDuration(timing.spanMs, false) : null;
-  const chip = 'press state-layer inline-flex min-h-11 items-center gap-1.5 rounded-xl bg-surface-highest/60 px-3 text-sm font-medium';
+  const chipBase = 'press state-layer inline-flex min-h-11 items-center gap-1.5 rounded-xl px-3 text-sm font-medium';
+  const chip = `${chipBase} bg-surface-highest/60`;
 
   return (
     <li
@@ -147,9 +148,10 @@ export function TaskRow({ note, nowMs, focused, showPlace, onPointerDown, onSele
             ))}
           </div>
           <div class="flex flex-wrap items-end gap-x-6 gap-y-2.5">
-            <div>
-              <p class="text-[11px] font-semibold tracking-wider text-muted uppercase">Size</p>
-              <div class="mt-2 flex gap-2">
+            <div class="w-full">
+              <p class="text-[11px] font-semibold tracking-wider text-muted uppercase">Story points</p>
+              {/* Fibonacci 1–21: seven targets wrap on a phone rather than run off the edge. */}
+              <div class="mt-2 flex flex-wrap gap-2">
                 {SIZES.map((s) => (
                   <button
                     key={s}
@@ -157,7 +159,7 @@ export function TaskRow({ note, nowMs, focused, showPlace, onPointerDown, onSele
                     aria-pressed={s === size}
                     aria-label={`${s} story points`}
                     onClick={() => onSize(note, s)}
-                    class={`${chip} min-w-11 justify-center ${s === size ? 'bg-accent text-on-accent' : ''}`}
+                    class={`${chipBase} min-w-11 justify-center tabular-nums ${s === size ? 'bg-accent font-semibold text-on-accent' : 'bg-surface-highest/60'}`}
                   >
                     {s}
                   </button>

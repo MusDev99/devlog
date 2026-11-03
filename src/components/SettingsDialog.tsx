@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'preact/hooks';
 import type { User } from '../lib/db.ts';
 import { DEFAULT_TARGETS, formatMinutes, TARGET_LIMITS, type Targets } from '../lib/stats.ts';
+import { Avatar } from './Avatar.tsx';
 import { Icon } from './Icon.tsx';
 
 type Props = { open: boolean; user: User | null; onSignOut: () => void; targets: Targets; onSave: (targets: Targets) => void; onClose: () => void };
@@ -84,6 +85,7 @@ export function SettingsDialog({ open, user, onSignOut, targets, onSave, onClose
         <div class="mt-5 flex items-center gap-3 rounded-2xl bg-surface-high px-3.5 py-2.5">
           {user ? (
             <>
+              <Avatar user={user} size="size-10" />
               <div class="min-w-0 flex-1">
                 <p class="truncate font-medium">{user.name || user.email}</p>
                 <p class="truncate text-xs text-muted">{user.email} · tasks sync to the team sheet</p>

@@ -73,6 +73,8 @@ function fakeGoogle(tabs: Record<string, string[][]>) {
       tabs[append[1] ?? ''] = [...(tabs[append[1] ?? ''] ?? []), ...(body as { values: string[][] }).values];
       return ok({});
     }
+    const header = path.match(/^\/values\/(\w+)!1:1/);
+    if (header) return ok({ values: (tabs[header[1] ?? ''] ?? []).slice(0, 1).filter((r) => r.length > 0) });
     const get = path.match(/^\/values\/(\w+)!A(\d+):A(\d*)/);
     if (get) {
       const from = Number(get[2]) - 1;
@@ -90,21 +92,32 @@ test('upsertUser: creates the tab and headers, registers a new email, updates a 
   let clock = NOW;
   const sheets = createSheets(cfgWith(pem), google.fetchFn, () => clock);
 
-  assert.equal(await upsertUser(sheets, { email: 'Ana@Example.com', name: 'Ana', sub: 'g1' }, '2026-11-03T09:00:00.000Z'), 'registered');
+  const pic = 'https://lh3.googleusercontent.com/a/ana=s96-c';
+  assert.equal(await upsertUser(sheets, { email: 'Ana@Example.com', name: 'Ana', sub: 'g1', picture: pic }, '2026-11-03T09:00:00.000Z'), 'registered');
   assert.deepEqual(google.tabs[USERS_TAB], [
-    ['email', 'name', 'google_id', 'registered_at', 'last_login_at'],
-    ['Ana@Example.com', 'Ana', 'g1', '2026-11-03T09:00:00.000Z', '2026-11-03T09:00:00.000Z'],
+    ['email', 'name', 'google_id', 'registered_at', 'last_login_at', 'picture_url'],
+    ['Ana@Example.com', 'Ana', 'g1', '2026-11-03T09:00:00.000Z', '2026-11-03T09:00:00.000Z', pic],
   ]);
 
   clock += 60_000;
-  assert.equal(await upsertUser(sheets, { email: 'ana@example.com', name: 'Ana B', sub: 'g1' }, '2026-11-04T08:00:00.000Z'), 'returning');
-  assert.deepEqual(google.tabs[USERS_TAB]?.[1], ['Ana@Example.com', 'Ana B', 'g1', '2026-11-03T09:00:00.000Z', '2026-11-04T08:00:00.000Z']);
+  const newPic = 'https://lh3.googleusercontent.com/a/ana2=s96-c';
+  assert.equal(await upsertUser(sheets, { email: 'ana@example.com', name: 'Ana B', sub: 'g1', picture: newPic }, '2026-11-04T08:00:00.000Z'), 'returning');
+  assert.deepEqual(google.tabs[USERS_TAB]?.[1], ['Ana@Example.com', 'Ana B', 'g1', '2026-11-03T09:00:00.000Z', '2026-11-04T08:00:00.000Z', newPic]);
   assert.equal(google.tabs[USERS_TAB]?.length, 2, 'no duplicate row');
 
   assert.equal(google.calls.filter((c) => c.url === SHEETS.token).length, 1, 'access token cached');
   for (const c of google.calls.filter((c) => c.url.includes('values') && c.method !== 'GET')) {
     assert.ok(c.url.includes('valueInputOption=RAW') || (c.body as { valueInputOption?: string }).valueInputOption === 'RAW', `RAW: ${c.url}`);
   }
+});
+
+test('an existing Users tab from before picture_url gains the header; its rows stay as they were', async () => {
+  const { pem } = await testKey();
+  const old = [['email', 'name', 'google_id', 'registered_at', 'last_login_at'], ['bo@example.com', 'Bo', 'g2', 'r', 'l']];
+  const google = fakeGoogle({ [USERS_TAB]: old.map((r) => [...r]) });
+  await upsertUser(createSheets(cfgWith(pem), google.fetchFn, () => NOW), { email: 'bo@example.com', name: 'Bo', sub: 'g2', picture: '' }, 'now');
+  assert.deepEqual(google.tabs[USERS_TAB]?.[0], ['email', 'name', 'google_id', 'registered_at', 'last_login_at', 'picture_url']);
+  assert.deepEqual(google.tabs[USERS_TAB]?.[1], ['bo@example.com', 'Bo', 'g2', 'r', 'now', '']);
 });
 
 test('a Sheets error surfaces as an exception (the caller decides what to do)', async () => {

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'preact/hooks';
+import { Avatar } from './components/Avatar.tsx';
 import { Icon } from './components/Icon.tsx';
 import { Reports } from './components/Reports.tsx';
 import { SessionTasks } from './components/SessionTasks.tsx';
@@ -264,9 +265,7 @@ export function App({ user, onSignOut }: { user: User | null; onSignOut: () => v
               class="press state-layer grid size-11 place-items-center rounded-full bg-surface-high text-muted hover:text-fg"
             >
               {user ? (
-                <span aria-hidden="true" class="grid size-8 place-items-center rounded-full bg-accent text-sm font-bold text-on-accent uppercase">
-                  {(user.name || user.email).trim().charAt(0)}
-                </span>
+                <Avatar user={user} />
               ) : (
                 <Icon name="settings" class="size-5" />
               )}

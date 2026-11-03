@@ -21,10 +21,9 @@ export const QUADRANT_LABELS: Record<Quadrant, { badge: string; name: string; hi
 export const PLACES = ['unsorted', ...QUADRANTS] as const;
 export type Place = (typeof PLACES)[number];
 
-/** T-shirt sizes as points. */
-export const SIZES = [1, 3, 5] as const;
+/** Story points on the Fibonacci scale up to 21: the gaps grow with the uncertainty of bigger work. */
+export const SIZES = [1, 2, 3, 5, 8, 13, 21] as const;
 export type Size = (typeof SIZES)[number];
-export const SIZE_LABELS: Record<Size, string> = { 1: 'S', 3: 'M', 5: 'L' };
 
 export const MAX_NOTE_LENGTH = 500;
 
@@ -60,7 +59,7 @@ export type Run = { s: string; e: string };
 export const placeOf = (n: Note): Place => n.quadrant ?? 'schedule';
 export const sizeOf = (n: Note): Size => n.size ?? 1;
 
-/** S → M → L → S: one tap per step (Fitts), only three choices (Hick). */
+/** 1 → 2 → 3 → 5 → 8 → 13 → 21 → 1. */
 export function nextSize(size: Size): Size {
   return SIZES[(SIZES.indexOf(size) + 1) % SIZES.length] ?? 1;
 }

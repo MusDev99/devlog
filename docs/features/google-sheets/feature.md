@@ -53,6 +53,14 @@ Delivered in three PRs:
 | A07 Auth | OIDC + PKCE, ID token verified (iss, aud, exp, nonce, email_verified), signed cookies |
 | A10 SSRF | Google hosts are fixed constants; `SHEET_ID` must look like an id, not a URL |
 
+## Acceptance criteria: 4. Profile photo
+
+| ID | Given / When / Then | Evidence |
+|---|---|---|
+| P1 | The ID token's `picture` is kept only if it is `https` on `*.googleusercontent.com`; same rule in browser and server | `tests/profile.test.ts`, `tests/auth.test.ts` |
+| P2 | Users rows get `picture_url`; an existing 5-column tab gains the header, its rows untouched | `tests/sheets.test.ts` |
+| P3 | The header and Settings show the photo; a failed load shows the initial | Manual run (photo loads; broken URL shows "T") |
+
 ## Laws of UX
 
 | Law | Where |
