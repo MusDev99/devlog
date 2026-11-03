@@ -4,6 +4,7 @@ import { Reports } from './components/Reports.tsx';
 import { SessionTasks } from './components/SessionTasks.tsx';
 import { SettingsDialog } from './components/SettingsDialog.tsx';
 import { StatsView } from './components/StatsView.tsx';
+import { SyncChip } from './components/SyncChip.tsx';
 import { PLACE_NAMES } from './components/TaskRow.tsx';
 import { TimerPanel } from './components/TimerPanel.tsx';
 import { allNotes, deleteNote, keepStorage, loadPref, loadTargets, saveNote, savePref, saveTargets, type User } from './lib/db.ts';
@@ -23,6 +24,7 @@ import {
   type Tag,
 } from './lib/notes.ts';
 import { setBadge, useInstall, useOnline, useUpdate } from './lib/pwa.ts';
+import { useSync } from './lib/use-sync.ts';
 import { dayKey, dayLabel, greeting } from './lib/today.ts';
 
 const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
@@ -66,6 +68,8 @@ export function App({ user, onSignOut }: { user: User | null; onSignOut: () => v
   const [targets, setTargets] = useState(loadTargets);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const install = useInstall();
+  // Signed in: every change goes to the team's Google Sheet; local-only mode never syncs.
+  const sync = useSync(user !== null && load.state === 'ready', load);
   const applyUpdate = useUpdate();
   const [iosHint, setIosHint] = useState(() => install.iosHint && loadPref(IOS_HINT_KEY) !== 'dismissed');
   const setScreen = (next: Screen) => {
@@ -241,6 +245,7 @@ export function App({ user, onSignOut }: { user: User | null; onSignOut: () => v
                 <span class="hidden sm:inline">Offline</span>
               </span>
             )}
+            <SyncChip status={sync.status} onRetry={sync.retry} />
             {install.canInstall && (
               <button
                 type="button"

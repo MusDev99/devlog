@@ -19,6 +19,7 @@ Sign in with Google, time each task (actual vs span), sort them on an urgent × 
 | 📊 Stats: daily targets (tasks, story points, focus time), streaks, last 7 days by time / points / tasks, weekly review, time by quadrant and task, insights | ✅ v2.4 |
 | 📲 Mobile-first PWA: bottom tab bar, Install button (iPhone: Add to Home Screen hint), app shortcuts, update prompt, icon badge, persistent storage, fully offline launch | ✅ v2.5 |
 | 🔐 Google sign-in (required, self-registration), Users tab in the team's Google Sheet, per-account data on the device | ✅ v2.6 |
+| 📄 Every task in the **Tasks** tab: start, end, pauses, actual vs span; offline changes queue and sync when back | ✅ v2.6 |
 
 ## 🚀 Quick start
 
@@ -39,7 +40,7 @@ Node 22.18+ (tests run TypeScript directly with `node --test`).
 | `src/components/` | `TimerPanel` (stopwatch ring), `SessionTasks` (List / Matrix, Unsorted, drag), `TaskRow` (Start/Stop per task), `Composer` (add row), `Reports` (Standup / Week), `StatsView`, `SettingsDialog` (daily targets), `Icon` |
 | `src/styles.css` | Material Design 3 colour roles as Tailwind `@theme` tokens, `state-layer` utility |
 | `api/auth/*`, `api/_lib/auth.ts` | Google sign-in (OIDC + PKCE), signed session cookie |
-| `api/_lib/sheets.ts` | Google Sheets as a service account (RAW writes), Users tab |
+| `api/_lib/sheets.ts`, `api/tasks.ts` | Google Sheets as a service account (RAW writes): Users tab, Tasks tab upsert |
 | `tests/golden/` | Standup golden set (10 note days): the rules keep every blocker and invent nothing |
 | `src/lib/` | Pure logic (`notes.ts` incl. the stopwatch, `matrix.ts`, `stats.ts`, `standup.ts`, `recap.ts`, `today.ts`), `db.ts` (IndexedDB, the only storage module), `speech.ts`, PWA helpers |
 | `public/sw.js`, `public/sw-policy.js` | Service worker and its tested routing rules |
@@ -52,6 +53,7 @@ Node 22.18+ (tests run TypeScript directly with `node --test`).
 ## 💡 Tips
 
 - **Install it**: Android / desktop Chrome or Edge show **Install** in the header. On iPhone or iPad, tap **Share → Add to Home Screen**. Installed, it opens full screen, works offline, shows open tasks on its icon, and long-pressing the icon offers **Timer**, **Add task** and **Stats**.
+- Signed in, every change lands in the team's Google Sheet: **Users** (one row per person) and **Tasks** (one row per task: start, end, pauses, *actual* = time worked, *span* = start to finish). The cloud chip in the header says Synced, Syncing, how many changes wait while offline, or Retry.
 - A new version shows **New version ready · Reload**; nothing changes under you until you tap it.
 
 - New tasks land in **Unsorted** (it hides when empty); pick their size (1 / 3 / 5 SP) before adding. ▶ next to the field adds a task and starts its stopwatch. `wip:`, `b:` (blocked) or `done:` set the status.
@@ -69,7 +71,7 @@ Node 22.18+ (tests run TypeScript directly with `node --test`).
 
 1. Import the repo in Vercel (framework preset: Vite, it reads `vercel.json`). Production branch `main`; every PR gets a preview URL. Free Hobby plan is enough.
 2. **Google sign-in**: Google Cloud → APIs & Services → OAuth consent screen, then Credentials → **OAuth client (Web application)** with redirect URI `<APP_URL>/api/auth/callback` (one per deploy URL you sign in on).
-3. **Google Sheet**: enable the **Google Sheets API**; IAM → **Service accounts** → create one → Keys → add a JSON key. Create a spreadsheet and **share it with the service-account email as Editor**. The app creates the **Users** tab and its header row on first sign-in.
+3. **Google Sheet**: enable the **Google Sheets API**; IAM → **Service accounts** → create one → Keys → add a JSON key. Create a spreadsheet and **share it with the service-account email as Editor**. The app creates the **Users** and **Tasks** tabs and their header rows when it first writes.
 4. Environment variables (Production and Preview), see `.env.example`:
 
 | Variable | Required | What |

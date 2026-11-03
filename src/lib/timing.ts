@@ -49,3 +49,55 @@ export function taskTiming(note: Note, nowMs: number): Timing | null {
     spanMs,
   };
 }
+
+/** Tasks tab columns, in order. One row per task, keyed by `task_id`. */
+export const TASK_HEADERS = [
+  'task_id',
+  'user_email',
+  'title',
+  'quadrant',
+  'story_points',
+  'status',
+  'created_at',
+  'start_time',
+  'end_time',
+  'pauses',
+  'paused_min',
+  'actual_min',
+  'span_min',
+  'actual',
+  'span',
+  'updated_at',
+] as const;
+
+const minutes = (ms: number) => String(Math.round(ms / 60_000));
+const readable = (ms: number) => {
+  const m = Math.round(ms / 60_000);
+  return m >= 60 ? `${Math.floor(m / 60)}h ${String(m % 60).padStart(2, '0')}m` : `${m}m`;
+};
+
+/**
+ * The sheet row for a task, as text (written RAW). `email` always comes from the session, never the client.
+ * Times are ISO UTC; actual and span appear both as minutes (for formulas) and readable ("1h 30m").
+ */
+export function taskRow(note: Note, email: string, nowMs: number, status: string = note.tag): string[] {
+  const t = taskTiming(note, nowMs);
+  return [
+    note.id,
+    email,
+    note.text,
+    note.quadrant ?? 'schedule',
+    String(note.size ?? 1),
+    status,
+    note.createdAt,
+    t?.start ?? '',
+    t?.end ?? '',
+    t ? String(t.pauses) : '',
+    t ? minutes(t.pausedMs) : '',
+    t ? minutes(t.actualMs) : '',
+    t ? minutes(t.spanMs) : '',
+    t ? readable(t.actualMs) : '',
+    t ? readable(t.spanMs) : '',
+    new Date(nowMs).toISOString(),
+  ];
+}

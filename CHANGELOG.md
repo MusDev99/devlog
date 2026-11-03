@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-11-03 15:00
+
+- feat(sheets): every task is a row in the **Tasks** tab: task_id, user, title, quadrant, story points, status, created, start, end, pauses, paused / actual / span minutes, readable actual and span ("1h 30m", "2h 00m"), updated
+- feat(sync): offline-first sync: changes are stamped on the device, pushed ~2s later, when back online and when the app returns; failures retry with backoff; deletes mark the row `deleted`
+- feat(sync): sync chip in the header (Synced / Syncing / Offline · n waiting / Retry / Sign in again / Sheet not set up)
+- security: `/api/tasks` is same-origin, session-only, rate limited, size-capped; the email comes from the session; nobody can overwrite or delete another person's rows
+
 ## 2026-11-03 13:00
 
 - feat(auth): Google sign-in is back and now required: OIDC + PKCE, signed cookies (restored from v1.0); any verified Google account self-registers (`ALLOWED_EMAILS` optional)
