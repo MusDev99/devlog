@@ -25,7 +25,7 @@ test('api/: every relative import ends in .js', () => {
 
 /** Shared code that api/ pulls from src/ must not import values itself (its `.ts` paths do not exist once compiled). */
 test('src modules used by api/ have type-only imports', () => {
-  for (const name of ['notes', 'timing']) {
+  for (const name of ['notes', 'timing', 'targets']) {
     const source = readFileSync(new URL(`../src/lib/${name}.ts`, import.meta.url), 'utf8');
     const valueImports = [...source.matchAll(/^import (?!type )[^;]+;$/gm)].map((m) => m[0]);
     assert.deepEqual(valueImports, [], name);

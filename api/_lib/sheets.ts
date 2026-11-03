@@ -118,7 +118,43 @@ export function createSheets(cfg: SheetsConfig, fetchFn: Fetch = fetch, now: () 
 
 /** Users tab: one row per person, keyed by email. */
 export const USERS_TAB = 'Users';
-export const USER_HEADERS = ['email', 'name', 'google_id', 'registered_at', 'last_login_at', 'picture_url'];
+export const USER_HEADERS = [
+  'email',
+  'name',
+  'google_id',
+  'registered_at',
+  'last_login_at',
+  'picture_url',
+  'target_tasks',
+  'target_points',
+  'target_minutes',
+];
+/** Columns G:I hold the person's daily targets (blank until first saved). */
+const TARGET_RANGE = { from: 'G', to: 'I' } as const;
+
+/** The row number of a person in Users (2-based), or null when they never signed in. */
+async function userRow(sheets: Sheets, email: string): Promise<number | null> {
+  await sheets.ensureTab(USERS_TAB, USER_HEADERS);
+  const emails = (await sheets.getValues(`${USERS_TAB}!A2:A`)).map((row) => (row[0] ?? '').trim().toLowerCase());
+  const index = emails.indexOf(email.toLowerCase());
+  return index === -1 ? null : index + 2;
+}
+
+/** A person's target cells (text, possibly blank), or null when they have no Users row. */
+export async function readUserTargets(sheets: Sheets, email: string): Promise<string[] | null> {
+  const row = await userRow(sheets, email);
+  if (row === null) return null;
+  const cells = (await sheets.getValues(`${USERS_TAB}!${TARGET_RANGE.from}${row}:${TARGET_RANGE.to}${row}`))[0] ?? [];
+  return [0, 1, 2].map((i) => cells[i] ?? '');
+}
+
+/** Write a person's target cells; false when they have no Users row. */
+export async function writeUserTargets(sheets: Sheets, email: string, cells: string[]): Promise<boolean> {
+  const row = await userRow(sheets, email);
+  if (row === null) return false;
+  await sheets.batchUpdate([{ range: `${USERS_TAB}!${TARGET_RANGE.from}${row}:${TARGET_RANGE.to}${row}`, values: [cells] }]);
+  return true;
+}
 
 /** First sign-in appends a row (registration); later sign-ins update the name, last login and profile picture. */
 export async function upsertUser(

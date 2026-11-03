@@ -61,6 +61,16 @@ Delivered in three PRs:
 | P2 | Users rows get `picture_url`; an existing 5-column tab gains the header, its rows untouched | `tests/sheets.test.ts` |
 | P3 | The header and Settings show the photo; a failed load shows the initial | Manual run (photo loads; broken URL shows "T") |
 
+## Acceptance criteria: 5. Settings per profile
+
+| ID | Given / When / Then | Evidence |
+|---|---|---|
+| G1 | Daily targets are stored in the person's Users row (G:I); blank until saved; never written to someone else's row | `tests/sheets.test.ts` |
+| G2 | `GET /api/settings` returns my targets or null; `PUT` validates (limits) and writes; guards 405 / 503 / 403 (PUT) / 401 / 429 / 413 / 400 / 404 / 502 | `tests/settings-api.test.ts` |
+| G3 | First sign-in with nothing saved: the device's targets go to the profile | Manual run (mock with the real handler): Users row 4 / 13 / 90 |
+| G4 | Saving in Settings updates the row and says "Saved to your profile" | Manual run: row 4 / 21 / 90 |
+| G5 | Another device (nothing cached) gets the profile's targets at sign-in | Manual run: rings "of 21 SP", "of 4", "of 1h 30m" |
+
 ## Laws of UX
 
 | Law | Where |

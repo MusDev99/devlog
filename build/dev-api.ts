@@ -6,6 +6,7 @@ export const API_ROUTES: Record<string, string> = {
   '/api/auth/login': '/api/auth/login.ts',
   '/api/auth/callback': '/api/auth/callback.ts',
   '/api/auth/session': '/api/auth/session.ts',
+  '/api/settings': '/api/settings.ts',
   '/api/tasks': '/api/tasks.ts',
 };
 
