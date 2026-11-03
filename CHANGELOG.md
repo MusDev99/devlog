@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-11-03 16:30
+
+- feat(dev): `npm run dev` serves the real `api/` functions with secrets from `.env.local`, so Google sign-in and the sheet can be tried locally without the Vercel CLI (dev only; a test keeps the route list in step with `api/`)
+
 ## 2026-11-03 15:00
 
 - feat(sheets): every task is a row in the **Tasks** tab: task_id, user, title, quadrant, story points, status, created, start, end, pauses, paused / actual / span minutes, readable actual and span ("1h 30m", "2h 00m"), updated

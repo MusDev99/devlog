@@ -67,6 +67,16 @@ Node 22.18+ (tests run TypeScript directly with `node --test`).
 - On Friday the **Friday recap** opens by itself (shipped / in progress / blockers for the week); other days tap **Week so far**.
 - Voice uses the browser's own speech service (Chrome/Safari); the mic button hides where it is missing.
 
+## 🔐 Sign in locally
+
+`npm run dev` also serves the `api/` functions (dev only, `build/dev-api.ts`), so real Google sign-in and the sheet work on your machine without the Vercel CLI.
+
+1. Google Cloud → APIs & Services → Credentials → your OAuth client (Web application) → **Authorised redirect URIs** → add `http://localhost:5173/api/auth/callback`.
+2. Create `.env.local` in the project root (git-ignored) with the variables from `.env.example`, and `APP_URL=http://localhost:5173`. The sheet variables are optional: without them sign-in works but nothing is written.
+3. `npm run dev` → http://localhost:5173 → **Continue with Google**.
+
+Without `.env.local` the functions answer 503 and the app runs local-only, as before.
+
 ## ☁️ Deploy (Vercel)
 
 1. Import the repo in Vercel (framework preset: Vite, it reads `vercel.json`). Production branch `main`; every PR gets a preview URL. Free Hobby plan is enough.
