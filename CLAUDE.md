@@ -5,7 +5,7 @@ DevLog: offline-first mobile PWA. A stopwatch for the selected task (Start / Pau
 ## Commands
 
 ```bash
-npm run dev        # dev server (service worker off)
+npm run dev        # dev server (service worker off); also serves api/* from .env.local (build/dev-api.ts)
 npm run build      # production build to dist/
 npm run preview    # serve dist/ (service worker on)
 npm test           # node --test, Node 22.18+ (runs .ts directly)
@@ -33,6 +33,7 @@ Plan (goal, files, risks; owner approves) → Gather (read code/docs first) → 
 - **Google Sheet**: `api/_lib/sheets.ts`: service-account JWT (RS256, Web Crypto) → access token at the fixed `oauth2.googleapis.com/token`, cached per instance; Sheets REST with `valueInputOption=RAW` always (text that looks like a formula stays text). The callback upserts the **Users** tab (`email | name | google_id | registered_at | last_login_at`; a new email appends = registration). A sheet error never blocks sign-in.
 - **Per-user local data**: `db.ts` `setAccount(email)` switches IndexedDB to `devlog:<email>`; tasks made before sign-in existed are copied once into the first signed-in account (`adoptLegacyTasks`); the old `devlog` DB is kept.
 - **Tasks sheet sync**: `POST /api/tasks` (`api/tasks.ts` wires `api/_lib/tasks-handler.ts`, which takes its dependencies injected so tests run it): POST only, configured, same-origin, session, per-user rate limit, sheet configured, ≤ 64 KB, ≤ 50 items, every task `isNote`. Rows come from `taskRow` in `src/lib/timing.ts` (columns `TASK_HEADERS`: start, end, pauses, paused / actual / span minutes and readable actual / span); `user_email` always from the session. `upsertTasks` (sheets.ts) updates by `task_id`, appends new ones, never touches another person's row, and marks deletes `deleted` (rows are never removed). Client: `saveNote` stamps `updatedAt`; the IndexedDB `sync` store (DB v2) keeps each task's synced version and pending deletes; `pending` / `batches` / `backoffMs` in `src/lib/sync.ts` (pure, tested); `useSync` in `src/lib/use-sync.ts` pushes ~2s after changes, on `online` and on return to the foreground, retrying with backoff; `SyncChip.tsx` shows Synced / Syncing / Offline · n waiting / Retry / Sign in again / Sheet not set up.
+- **Local API**: `build/dev-api.ts` (Vite plugin, `apply: 'serve'` only) runs the real `api/` handlers under `npm run dev` with env from `.env.local`; `API_ROUTES` must list every function (`tests/dev-api.test.ts` fails otherwise).
 - `api/` files import shared code **extensionless** and only from modules with type-only imports (Vercel bundles them); no relative imports inside `api/_lib/*`. `src/` and `tests/` import with `.ts` extensions (Node strip-types). Route handlers take `Request` → `Response`; logic that needs the network takes an injected `fetch` so tests never touch Google.
 - Golden set: `tests/golden/standup-cases.json`; unit tests check the rules keep every blocker and invent nothing.
 
