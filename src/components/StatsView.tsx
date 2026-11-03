@@ -1,4 +1,5 @@
 import { useState } from 'preact/hooks';
+import { plainText } from '../lib/links.ts';
 import { placeOf, PLACES, sizeOf, type Note, type Place } from '../lib/notes.ts';
 import {
   breakdown,
@@ -17,10 +18,11 @@ import {
   type Targets,
 } from '../lib/stats.ts';
 import { taskTiming } from '../lib/timing.ts';
+import { ActivityCalendar } from './ActivityCalendar.tsx';
 import { Icon, type IconName } from './Icon.tsx';
 import { PLACE_NAMES, PLACE_TONE } from './TaskRow.tsx';
 
-type Props = { tasks: Note[]; today: string; nowMs: number; timeZone: string; targets: Targets; onEditTargets: () => void };
+type Props = { tasks: Note[]; today: string; nowMs: number; timeZone: string; targets: Targets; onEditTargets: () => void; onToast: (message: string) => void };
 
 type Metric = 'time' | 'points' | 'tasks';
 const METRICS: { id: Metric; label: string }[] = [
@@ -33,7 +35,7 @@ const CARD = 'rounded-[28px] border border-line/70 bg-surface/80 p-4 sm:p-5';
 const TILE = 'rounded-2xl bg-surface-high/80 px-3.5 py-3';
 
 /** Stats tab: today against the daily targets, the last 7 days, the weekly review, where the time went, and what it means. */
-export function StatsView({ tasks, today, nowMs, timeZone, targets, onEditTargets }: Props) {
+export function StatsView({ tasks, today, nowMs, timeZone, targets, onEditTargets, onToast }: Props) {
   const days = dayStats(tasks, nowMs, timeZone);
   const todayStat = days.get(today) ?? { day: today, focusMs: 0, runs: 0, done: 0, points: 0 };
   const week = series(days, today, 7);
@@ -96,7 +98,7 @@ export function StatsView({ tasks, today, nowMs, timeZone, targets, onEditTarget
                 <span class="grid size-5 shrink-0 place-items-center rounded-full bg-ok text-bg">
                   <Icon name="check" class="size-3.5" />
                 </span>
-                <span class="min-w-0 flex-1 truncate">{t.text}</span>
+                <span class="min-w-0 flex-1 truncate">{plainText(t.text)}</span>
                 <FinishedTime note={t} nowMs={nowMs} />
                 <span class="shrink-0 rounded-md bg-primary/15 px-1.5 py-0.5 text-xs font-semibold text-primary tabular-nums">+{sizeOf(t)} SP</span>
               </li>
@@ -104,6 +106,8 @@ export function StatsView({ tasks, today, nowMs, timeZone, targets, onEditTarget
           </ul>
         )}
       </section>
+
+      <ActivityCalendar tasks={tasks} today={today} nowMs={nowMs} timeZone={timeZone} onToast={onToast} />
 
       <WeekChart week={week} today={today} targets={targets} />
 
@@ -121,7 +125,7 @@ export function StatsView({ tasks, today, nowMs, timeZone, targets, onEditTarget
           <Tile label="Best day" value={review.bestDay ? `${weekday(review.bestDay.day)} · ${formatMinutes(review.bestDay.focusMs)}` : '—'} />
           <Tile label="Points scored" value={`${review.points} SP`} />
           <Tile label="Tasks done" value={String(review.done)} />
-          <Tile label="Top task" value={split.tasks[0]?.note.text ?? '—'} />
+          <Tile label="Top task" value={split.tasks[0] ? plainText(split.tasks[0].note.text) : '—'} />
           <Tile label="Longest streak" value={`${longestStreak(days, isActive)} days`} />
         </dl>
       </section>
@@ -299,7 +303,7 @@ function Breakdown({ split }: { split: ReturnType<typeof breakdown> }) {
             {split.tasks.slice(0, 8).map((t) => (
               <li key={t.note.id}>
                 <div class="flex items-baseline gap-2 text-sm">
-                  <span class={`min-w-0 flex-1 truncate ${t.note.tag === 'done' ? 'text-muted' : ''}`}>{t.note.text}</span>
+                  <span class={`min-w-0 flex-1 truncate ${t.note.tag === 'done' ? 'text-muted' : ''}`}>{plainText(t.note.text)}</span>
                   <span class="shrink-0 text-xs text-muted tabular-nums" title="Time per story point">
                     {formatMinutes(t.msPerPoint)}/SP
                   </span>

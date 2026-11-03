@@ -10,10 +10,12 @@ import { PLACE_NAMES } from './components/TaskRow.tsx';
 import { TimerPanel } from './components/TimerPanel.tsx';
 import { allNotes, deleteNote, keepStorage, loadPref, loadTargets, saveNote, savePref, saveTargets, targetsPending, type User } from './lib/db.ts';
 import { isScreen, launchParams, type Screen } from './lib/launch.ts';
+import { plainText } from './lib/links.ts';
 import {
   elapsedMs,
   formatClock,
   moveNote,
+  placeOf,
   resetTimer,
   startTimer,
   stopTimer,
@@ -163,7 +165,7 @@ export function App({ user, onSignOut }: { user: User | null; onSignOut: () => v
   }, [runningTask?.id]);
 
   useEffect(() => {
-    document.title = runningTask ? `${formatClock(elapsedMs(runningTask, nowMs))} · ${runningTask.text}` : 'DevLog';
+    document.title = runningTask ? `${formatClock(elapsedMs(runningTask, nowMs))} · ${plainText(runningTask.text)}` : 'DevLog';
   }, [nowMs, runningTask]);
 
   // Phone: once the big timer scrolls away, a mini player keeps play/pause in thumb reach (Fitts).
@@ -231,7 +233,9 @@ export function App({ user, onSignOut }: { user: User | null; onSignOut: () => v
 
   const setStatus = (note: Note, tag: Tag) => {
     const at = new Date();
-    return save([moveNote(note, tag, at, dayKey(at, timeZone))], { message: tag === 'done' ? 'Marked done' : `Status: ${TAG_LABELS[tag]}`, before: note });
+    const message =
+      tag === 'done' ? 'Marked done' : note.tag === 'done' ? `Restored to ${PLACE_NAMES[placeOf(note)]}` : `Status: ${TAG_LABELS[tag]}`;
+    return save([moveNote(note, tag, at, dayKey(at, timeZone))], { message, before: note });
   };
 
   async function remove(note: Note) {
@@ -268,7 +272,7 @@ export function App({ user, onSignOut }: { user: User | null; onSignOut: () => v
 
   return (
     <div data-mode={running ? 'running' : 'idle'} class="mode-wash min-h-dvh">
-      <div class="mx-auto flex min-h-dvh w-full max-w-6xl flex-col px-4 pt-[max(8px,env(safe-area-inset-top))] pb-[calc(10rem+env(safe-area-inset-bottom))] lg:px-6 lg:pb-8">
+      <div class="flex min-h-dvh w-full flex-col px-4 pt-[max(8px,env(safe-area-inset-top))] pb-[calc(10rem+env(safe-area-inset-bottom))] sm:px-6 lg:px-8 lg:pb-8 2xl:px-12">
         <header class="flex items-center justify-between gap-x-4 py-4">
           <div class="flex min-w-0 items-baseline gap-3">
             <p class="text-lg font-bold tracking-tight">
@@ -361,7 +365,7 @@ export function App({ user, onSignOut }: { user: User | null; onSignOut: () => v
         {screen === 'stats' && (
           <main class="flex-1">
             {load.state === 'ready' ? (
-              <StatsView tasks={tasks} today={today} nowMs={nowMs} timeZone={timeZone} targets={targets} onEditTargets={() => setSettingsOpen(true)} />
+              <StatsView tasks={tasks} today={today} nowMs={nowMs} timeZone={timeZone} targets={targets} onEditTargets={() => setSettingsOpen(true)} onToast={setToast} />
             ) : (
               <div class="h-96 animate-pulse rounded-[28px] bg-surface" aria-label="Loading stats" />
             )}
@@ -369,7 +373,7 @@ export function App({ user, onSignOut }: { user: User | null; onSignOut: () => v
         )}
 
         <main
-          class={`grid flex-1 grid-cols-[minmax(0,1fr)] gap-5 lg:grid-cols-[minmax(320px,380px)_minmax(0,1fr)] lg:items-start lg:gap-8 ${screen === 'stats' ? 'hidden' : ''}`}
+          class={`grid flex-1 grid-cols-[minmax(0,1fr)] gap-5 lg:grid-cols-[minmax(320px,380px)_minmax(0,1fr)] lg:items-start lg:gap-8 2xl:grid-cols-[minmax(360px,420px)_minmax(0,1fr)] ${screen === 'stats' ? 'hidden' : ''}`}
         >
           <div ref={timerRef} class={screen === 'tasks' ? 'hidden lg:block' : ''}>
             <TimerPanel
@@ -467,7 +471,7 @@ export function App({ user, onSignOut }: { user: User | null; onSignOut: () => v
           <div class="mx-auto flex max-w-md items-center gap-3 rounded-full border border-line/70 bg-surface-high/95 py-1.5 pr-1.5 pl-4 shadow-2xl shadow-black/40 backdrop-blur">
             <span aria-hidden="true" class={`size-2 shrink-0 rounded-full bg-accent ${running ? 'animate-glow' : ''}`} />
             <span class="text-lg font-semibold tabular-nums">{formatClock(selected ? elapsedMs(selected, nowMs) : 0)}</span>
-            <span class="min-w-0 flex-1 truncate text-sm text-muted">{selected?.text}</span>
+            <span class="min-w-0 flex-1 truncate text-sm text-muted">{selected ? plainText(selected.text) : ''}</span>
             <button
               type="button"
               onClick={toggle}

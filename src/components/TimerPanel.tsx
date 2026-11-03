@@ -1,4 +1,5 @@
 import { elapsedMs, formatClock, formatDuration, runMs, type Note } from '../lib/notes.ts';
+import { plainText } from '../lib/links.ts';
 import { taskTiming } from '../lib/timing.ts';
 import { Icon } from './Icon.tsx';
 
@@ -37,7 +38,7 @@ export function TimerPanel({ task, nowMs, onToggle, onReset, onDone }: Props) {
         {task ? (
           <p class="inline-flex max-w-full items-center gap-2 rounded-full bg-surface-high px-3.5 py-2 text-sm font-medium">
             <span aria-hidden="true" class={`size-2 shrink-0 rounded-full bg-accent ${running ? 'animate-glow' : ''}`} />
-            <span class="truncate">{task.text}</span>
+            <span class="truncate">{plainText(task.text)}</span>
           </p>
         ) : (
           <p class="text-sm text-muted">Pick a task to time it</p>

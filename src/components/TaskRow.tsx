@@ -1,5 +1,6 @@
 import { useState } from 'preact/hooks';
 import { elapsedMs, formatClock, formatDuration, PLACES, placeOf, QUADRANT_LABELS, SIZES, sizeOf, TAG_LABELS, type Note, type Place, type Size, type Tag } from '../lib/notes.ts';
+import { linksIn, titleText } from '../lib/links.ts';
 import { taskTiming } from '../lib/timing.ts';
 import { Icon } from './Icon.tsx';
 
@@ -51,6 +52,8 @@ export function TaskRow({ note, nowMs, focused, showPlace, onPointerDown, onSele
   const size = sizeOf(note);
   const place = placeOf(note);
   const running = Boolean(note.startedAt);
+  const title = titleText(note.text);
+  const links = linksIn(note.text);
   const spent = elapsedMs(note, nowMs);
   const logged = spent < 60_000 ? `${Math.floor(spent / 1000)}s` : formatDuration(spent, false);
   const timing = done ? taskTiming(note, nowMs) : null;
@@ -71,7 +74,7 @@ export function TaskRow({ note, nowMs, focused, showPlace, onPointerDown, onSele
           type="button"
           onClick={() => onStatus(note, done ? 'todo' : 'done')}
           aria-pressed={done}
-          aria-label={done ? `Reopen: ${note.text}` : `Mark done: ${note.text}`}
+          aria-label={done ? `Reopen: ${title}` : `Mark done: ${title}`}
           class="press grid size-11 shrink-0 place-items-center rounded-full"
         >
           {done ? (
@@ -82,15 +85,16 @@ export function TaskRow({ note, nowMs, focused, showPlace, onPointerDown, onSele
             <span class="size-5 rounded-full border-2 border-outline transition-colors group-hover:border-fg/70" />
           )}
         </button>
+        <div class="min-w-0 flex-1">
         <button
           type="button"
           data-row-main
           onClick={() => !done && onSelect(note)}
           aria-pressed={done ? undefined : focused}
-          aria-label={done ? note.text : `${focused ? 'Selected' : 'Select'}: ${note.text}`}
-          class={`min-h-11 min-w-0 flex-1 py-2 text-left ${done ? 'cursor-default' : 'cursor-pointer'}`}
+          aria-label={done ? title : `${focused ? 'Selected' : 'Select'}: ${title}`}
+          class={`block min-h-11 w-full py-2 text-left ${done ? 'cursor-default' : 'cursor-pointer'}`}
         >
-          <span class={`block text-[15px] leading-5 break-words ${done ? 'text-muted line-through decoration-outline' : ''}`}>{note.text}</span>
+          <span class={`block text-[15px] leading-5 break-words ${done ? 'text-muted line-through decoration-outline' : ''}`}>{title}</span>
           {(spent > 0 || STATUS_TONE[note.tag] || showPlace) && (
             <span class="mt-1 flex flex-wrap items-center gap-1.5 text-xs text-muted">
               {spent > 0 && (
@@ -110,6 +114,29 @@ export function TaskRow({ note, nowMs, focused, showPlace, onPointerDown, onSele
             </span>
           )}
         </button>
+        {/* Links stay real links (outside the select button): Jira shows its key, others a short name. */}
+        {links.length > 0 && (
+          // 28px chip inside a 44px tap target (Fitts); negative margins keep the row compact.
+          <span class="-mt-3 -mb-1.5 flex flex-wrap gap-x-1.5">
+            {links.map((l) => (
+              <a
+                key={l.href}
+                href={l.href}
+                target="_blank"
+                rel="noopener noreferrer"
+                title={l.href}
+                onClick={(e) => e.stopPropagation()}
+                class="press group/link inline-flex min-h-11 max-w-full items-center"
+              >
+                <span class="inline-flex h-7 max-w-full items-center gap-1 rounded-md bg-google-blue/15 px-2 text-xs font-semibold text-google-blue transition-colors group-hover/link:bg-google-blue/25">
+                  <span class="truncate">{l.label}</span>
+                  <Icon name="open" class="size-3.5 shrink-0" />
+                </span>
+              </a>
+            ))}
+          </span>
+        )}
+        </div>
         <span title={`${size} story ${size === 1 ? 'point' : 'points'}`} class="shrink-0 rounded-md bg-surface-highest px-1.5 py-0.5 text-[11px] font-semibold text-muted tabular-nums">
           {size}
         </span>
@@ -118,7 +145,7 @@ export function TaskRow({ note, nowMs, focused, showPlace, onPointerDown, onSele
             type="button"
             onClick={() => onTimer(note)}
             aria-pressed={running}
-            aria-label={`${running ? 'Pause' : spent > 0 ? 'Resume' : 'Start'} timer: ${note.text}`}
+            aria-label={`${running ? 'Pause' : spent > 0 ? 'Resume' : 'Start'} timer: ${title}`}
             title={running ? 'Pause' : spent > 0 ? 'Resume' : 'Start'}
             class={`press state-layer grid size-11 shrink-0 place-items-center rounded-full ${running ? 'bg-accent text-on-accent' : 'text-accent'}`}
           >
@@ -129,7 +156,7 @@ export function TaskRow({ note, nowMs, focused, showPlace, onPointerDown, onSele
           type="button"
           onClick={() => setOpen((o) => !o)}
           aria-expanded={open}
-          aria-label={`More actions: ${note.text}`}
+          aria-label={`More actions: ${title}`}
           class={`press state-layer grid size-11 shrink-0 place-items-center rounded-full text-muted hover:text-fg ${open ? '' : REVEAL}`}
         >
           <Icon name="more" class="size-5" />
@@ -183,7 +210,7 @@ export function TaskRow({ note, nowMs, focused, showPlace, onPointerDown, onSele
             <button
               type="button"
               onClick={() => onDelete(note)}
-              aria-label={`Delete task: ${note.text}`}
+              aria-label={`Delete task: ${title}`}
               class="press state-layer inline-flex min-h-11 items-center gap-1.5 rounded-xl px-3 text-sm font-medium text-error"
             >
               <Icon name="delete" class="size-[18px]" />
