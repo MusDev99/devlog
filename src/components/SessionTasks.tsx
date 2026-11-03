@@ -217,7 +217,7 @@ export function SessionTasks({ tasks, today, nowMs, focusId, onAdd, ...actions }
                   key={v.place}
                   data-drop={v.place}
                   aria-labelledby={`q-${v.place}`}
-                  class={`flex min-h-36 flex-col rounded-2xl p-2.5 transition-[outline-color] md:min-h-44 ${tone.tint} ${ring(v.place)}`}
+                  class={`flex min-h-40 flex-col rounded-2xl p-2.5 transition-[outline-color] md:min-h-56 lg:min-h-[clamp(14rem,30vh,22rem)] ${tone.tint} ${ring(v.place)}`}
                 >
                   <header class="flex items-center justify-between gap-2 px-1.5 pt-0.5 pb-2" title={label.hint}>
                     <h3 id={`q-${v.place}`} class="flex min-w-0 items-center gap-2 text-sm font-semibold">

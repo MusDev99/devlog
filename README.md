@@ -26,6 +26,9 @@ Sign in with Google, time each task (actual vs span), sort them on an urgent × 
 | ✨ Animated sign-in page: a looping product story (sorting, timing, points, sync) in CSS, no GIF | ✅ v2.7 |
 | ✅ Done bucket: finished tasks leave the matrix and can be restored | ✅ v2.8 |
 | 🔗 Links in tasks: Jira URLs show as their key (SKYIQ-10143), click to open | ✅ v2.8 |
+| 📅 Last 12 weeks calendar: tap a day to see what you worked on | ✅ v2.9 |
+| 📄 CSV report download (12 weeks or one day), built on the device | ✅ v2.9 |
+| 🖥️ Full-width layout on large screens, taller quadrants | ✅ v2.9 |
 
 ## 🚀 Quick start
 

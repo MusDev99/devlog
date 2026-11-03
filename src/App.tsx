@@ -272,7 +272,7 @@ export function App({ user, onSignOut }: { user: User | null; onSignOut: () => v
 
   return (
     <div data-mode={running ? 'running' : 'idle'} class="mode-wash min-h-dvh">
-      <div class="mx-auto flex min-h-dvh w-full max-w-6xl flex-col px-4 pt-[max(8px,env(safe-area-inset-top))] pb-[calc(10rem+env(safe-area-inset-bottom))] lg:px-6 lg:pb-8">
+      <div class="flex min-h-dvh w-full flex-col px-4 pt-[max(8px,env(safe-area-inset-top))] pb-[calc(10rem+env(safe-area-inset-bottom))] sm:px-6 lg:px-8 lg:pb-8 2xl:px-12">
         <header class="flex items-center justify-between gap-x-4 py-4">
           <div class="flex min-w-0 items-baseline gap-3">
             <p class="text-lg font-bold tracking-tight">
@@ -365,7 +365,7 @@ export function App({ user, onSignOut }: { user: User | null; onSignOut: () => v
         {screen === 'stats' && (
           <main class="flex-1">
             {load.state === 'ready' ? (
-              <StatsView tasks={tasks} today={today} nowMs={nowMs} timeZone={timeZone} targets={targets} onEditTargets={() => setSettingsOpen(true)} />
+              <StatsView tasks={tasks} today={today} nowMs={nowMs} timeZone={timeZone} targets={targets} onEditTargets={() => setSettingsOpen(true)} onToast={setToast} />
             ) : (
               <div class="h-96 animate-pulse rounded-[28px] bg-surface" aria-label="Loading stats" />
             )}
@@ -373,7 +373,7 @@ export function App({ user, onSignOut }: { user: User | null; onSignOut: () => v
         )}
 
         <main
-          class={`grid flex-1 grid-cols-[minmax(0,1fr)] gap-5 lg:grid-cols-[minmax(320px,380px)_minmax(0,1fr)] lg:items-start lg:gap-8 ${screen === 'stats' ? 'hidden' : ''}`}
+          class={`grid flex-1 grid-cols-[minmax(0,1fr)] gap-5 lg:grid-cols-[minmax(320px,380px)_minmax(0,1fr)] lg:items-start lg:gap-8 2xl:grid-cols-[minmax(360px,420px)_minmax(0,1fr)] ${screen === 'stats' ? 'hidden' : ''}`}
         >
           <div ref={timerRef} class={screen === 'tasks' ? 'hidden lg:block' : ''}>
             <TimerPanel

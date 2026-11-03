@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-11-04 00:30
+
+- feat(stats): **Last 12 weeks** calendar heatmap of focus time; tap a day (or use the arrows) to see the tasks worked on and finished that day, with time, quadrant and points
+- feat(stats): **CSV report** download for the 12 weeks or one day: date, task, links, quadrant, SP, status, created, start, end, pauses, paused / actual / span minutes and readable times; built on the device, safe against spreadsheet formula injection
+- change(layout): the app uses the full window width on large screens (no centred max width) and the quadrants are taller
+
 ## 2026-11-03 23:00
 
 - feat(tasks): finishing a task clears it from its quadrant and moves it to a **Done** bucket under the matrix (newest first, older than a week under Earlier) with quadrant, points, actual / span time and day; **Restore** sends it back to its quadrant ("Restored to Do now", undoable); drop a task on Done to finish it

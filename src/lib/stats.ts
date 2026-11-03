@@ -9,7 +9,7 @@ export { DEFAULT_TARGETS, isTargets, TARGET_LIMITS, type Targets } from './targe
 /** One day: stopwatch time and runs (by the day each run started), finished tasks and their points (by the day they were done). */
 export type DayStat = { day: string; focusMs: number; runs: number; done: number; points: number };
 
-type DatedRun = { note: Note; start: number; ms: number };
+export type DatedRun = { note: Note; start: number; ms: number };
 
 const DAY_MS = 86_400_000;
 const toUtc = (day: string) => Date.parse(`${day}T00:00:00Z`);
@@ -17,7 +17,7 @@ const shiftDay = (day: string, by: number) => new Date(toUtc(day) + by * DAY_MS)
 const empty = (day: string): DayStat => ({ day, focusMs: 0, runs: 0, done: 0, points: 0 });
 
 /** Every dated run, the one still running included (up to `nowMs`). */
-function datedRuns(notes: Note[], nowMs: number): DatedRun[] {
+export function datedRuns(notes: Note[], nowMs: number): DatedRun[] {
   return notes.flatMap((note) => {
     const runs = (note.runs ?? []).map((r) => ({ note, start: Date.parse(r.s), ms: Math.max(0, Date.parse(r.e) - Date.parse(r.s)) }));
     if (note.startedAt) runs.push({ note, start: Date.parse(note.startedAt), ms: Math.max(0, nowMs - Date.parse(note.startedAt)) });

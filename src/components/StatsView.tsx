@@ -18,10 +18,11 @@ import {
   type Targets,
 } from '../lib/stats.ts';
 import { taskTiming } from '../lib/timing.ts';
+import { ActivityCalendar } from './ActivityCalendar.tsx';
 import { Icon, type IconName } from './Icon.tsx';
 import { PLACE_NAMES, PLACE_TONE } from './TaskRow.tsx';
 
-type Props = { tasks: Note[]; today: string; nowMs: number; timeZone: string; targets: Targets; onEditTargets: () => void };
+type Props = { tasks: Note[]; today: string; nowMs: number; timeZone: string; targets: Targets; onEditTargets: () => void; onToast: (message: string) => void };
 
 type Metric = 'time' | 'points' | 'tasks';
 const METRICS: { id: Metric; label: string }[] = [
@@ -34,7 +35,7 @@ const CARD = 'rounded-[28px] border border-line/70 bg-surface/80 p-4 sm:p-5';
 const TILE = 'rounded-2xl bg-surface-high/80 px-3.5 py-3';
 
 /** Stats tab: today against the daily targets, the last 7 days, the weekly review, where the time went, and what it means. */
-export function StatsView({ tasks, today, nowMs, timeZone, targets, onEditTargets }: Props) {
+export function StatsView({ tasks, today, nowMs, timeZone, targets, onEditTargets, onToast }: Props) {
   const days = dayStats(tasks, nowMs, timeZone);
   const todayStat = days.get(today) ?? { day: today, focusMs: 0, runs: 0, done: 0, points: 0 };
   const week = series(days, today, 7);
@@ -105,6 +106,8 @@ export function StatsView({ tasks, today, nowMs, timeZone, targets, onEditTarget
           </ul>
         )}
       </section>
+
+      <ActivityCalendar tasks={tasks} today={today} nowMs={nowMs} timeZone={timeZone} onToast={onToast} />
 
       <WeekChart week={week} today={today} targets={targets} />
 
