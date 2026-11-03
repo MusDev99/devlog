@@ -129,7 +129,7 @@ export function App() {
     return () => observer.disconnect();
   }, []);
 
-  /** Start or stop a task's stopwatch. Starting one stops any other (one at a time) and selects it. */
+  /** Start, pause or resume a task's stopwatch. Starting one pauses any other (one at a time) and selects it. */
   function toggleTimer(note: Note) {
     const at = new Date();
     navigator.vibrate?.(12);
@@ -154,7 +154,7 @@ export function App() {
     if (load.state === 'ready' && tasks.length > 0) void keepStorage();
   }, [load.state, tasks.length > 0]);
 
-  // Keyboard: Space start/stop, N new task. Ignored while typing.
+  // Keyboard: Space start/pause, N new task. Ignored while typing.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.metaKey || e.ctrlKey || e.altKey || isTyping(e.target)) return;
@@ -362,7 +362,7 @@ export function App() {
         <footer class="mt-8 flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-xs text-muted">
           <span class="hidden items-center gap-1.5 [@media(hover:hover)]:inline-flex">
             <Icon name="keyboard" class="size-4" />
-            <kbd class="rounded bg-surface-high px-1.5 py-0.5 font-sans">Space</kbd> start/stop
+            <kbd class="rounded bg-surface-high px-1.5 py-0.5 font-sans">Space</kbd> start/pause
             <kbd class="rounded bg-surface-high px-1.5 py-0.5 font-sans">N</kbd> new task
           </span>
           <span>DevLog v{__APP_VERSION__} · stored on this device only</span>
@@ -423,10 +423,10 @@ export function App() {
             <button
               type="button"
               onClick={toggle}
-              aria-label={running ? 'Stop' : 'Start'}
+              aria-label={running ? 'Pause' : 'Start'}
               class="press state-layer grid size-11 shrink-0 place-items-center rounded-full bg-accent text-on-accent"
             >
-              <Icon name={running ? 'stop' : 'play'} class="size-5" />
+              <Icon name={running ? 'pause' : 'play'} class="size-5" />
             </button>
           </div>
         </div>
