@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-11-03 17:30
+
+- fix(api): every function crashed on Vercel (`500 FUNCTION_INVOCATION_FAILED`), so the login page never showed: extensionless relative imports fail in Node ES modules. Imports now end in `.js`; a test enforces it
+
 ## 2026-11-03 16:30
 
 - feat(dev): `npm run dev` serves the real `api/` functions with secrets from `.env.local`, so Google sign-in and the sheet can be tried locally without the Vercel CLI (dev only; a test keeps the route list in step with `api/`)

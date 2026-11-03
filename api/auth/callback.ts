@@ -12,9 +12,9 @@ import {
   SESSION_TTL_SECONDS,
   verifyIdToken,
   type Jwks,
-} from '../_lib/auth';
-import { createLimiter } from '../_lib/limiter';
-import { createSheets, readSheetsConfig, upsertUser } from '../_lib/sheets';
+} from '../_lib/auth.js';
+import { createLimiter } from '../_lib/limiter.js';
+import { createSheets, readSheetsConfig, upsertUser } from '../_lib/sheets.js';
 
 /**
  * GET /api/auth/callback: checks state, exchanges the code (PKCE), verifies the ID token and the optional

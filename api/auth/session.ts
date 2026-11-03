@@ -1,4 +1,4 @@
-import { cookie, getCookie, isAllowed, isSameOrigin, readAuthConfig, readSession, SESSION_COOKIE } from '../_lib/auth';
+import { cookie, getCookie, isAllowed, isSameOrigin, readAuthConfig, readSession, SESSION_COOKIE } from '../_lib/auth.js';
 
 const json = (status: number, body: unknown, setCookie?: string) => {
   const headers = new Headers({ 'content-type': 'application/json', 'cache-control': 'no-store' });
