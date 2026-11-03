@@ -31,6 +31,28 @@ Delivered in three PRs:
 | S6 | Each account has its own local database; pre-sign-in tasks go to the first account once | Manual run (`devlog:tester@example.com` created) |
 | S7 | Without a sign-in server (local dev / not set up) the app runs local-only | Manual run on `vite dev` |
 
+## Acceptance criteria: 3. Tasks sheet sync
+
+| ID | Given / When / Then | Evidence |
+|---|---|---|
+| R1 | The owner's example becomes a Tasks row: start 11:00, end 13:00, 3 pauses, 30 paused, 90 actual ("1h 30m"), 120 span ("2h 00m") | `tests/tasks-api.test.ts`; manual end-to-end through the real handler into an in-memory sheet |
+| R2 | A change updates the same row (no duplicate); a new task appends; a delete marks `deleted`; another person's row is never touched | `tests/tasks-api.test.ts` (upsertTasks); manual run |
+| R3 | `/api/tasks` refuses: not POST 405, not set up 503, cross-site 403, signed out 401, busy 429, sheet missing 503, > 64 KB or > 50 items 413, bad JSON / shape / task 400; sheet failure 502; email always from the session | `tests/tasks-api.test.ts` |
+| R4 | Offline / sheet unreachable: changes wait on the device ("1 not synced · Retry"); back online + Retry → synced | Manual run |
+| R5 | Pending = never synced or saved since; deletes only for tasks the sheet has; Undo cancels a delete; batches by count and size; backoff 15s → 5m | `tests/sync.test.ts` |
+
+## OWASP notes
+
+| Risk | Mitigation |
+|---|---|
+| A01 Access | Rows owned by the session email; another person's rows are refused; email never from the body |
+| A02 Secrets | Service-account key and OAuth secret only in Vercel env; `.env.example` holds placeholders |
+| A03 Injection | Sheets writes are RAW: a title like `=IMPORTXML(…)` stays text |
+| A04 Design | The device stays the source; the sheet is a record; a sheet error never blocks sign-in or work |
+| A05 CSRF | Cookie-authenticated POST requires same-origin (`Sec-Fetch-Site` / `Origin`) |
+| A07 Auth | OIDC + PKCE, ID token verified (iss, aud, exp, nonce, email_verified), signed cookies |
+| A10 SSRF | Google hosts are fixed constants; `SHEET_ID` must look like an id, not a URL |
+
 ## Laws of UX
 
 | Law | Where |

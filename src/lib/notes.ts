@@ -50,6 +50,8 @@ export type Note = {
   startedAt?: string;
   /** Finished stopwatch runs, oldest first, so stats can place time on days. Time banked before v2.4 has none. */
   runs?: Run[];
+  /** ISO UTC of the last save on the device (stamped by `saveNote`): the sync version. */
+  updatedAt?: string;
 };
 
 /** One stopwatch run: start and end, ISO 8601 UTC. */
@@ -171,6 +173,7 @@ export function isNote(value: unknown): value is Note {
     (v.spentMs === undefined || (typeof v.spentMs === 'number' && v.spentMs >= 0)) &&
     (v.startedAt === undefined || typeof v.startedAt === 'string') &&
     (v.runs === undefined || (Array.isArray(v.runs) && v.runs.every(isRun))) &&
+    (v.updatedAt === undefined || typeof v.updatedAt === 'string') &&
     TAGS.includes(v.tag as Tag)
   );
 }

@@ -131,3 +131,47 @@ export async function upsertUser(sheets: Sheets, user: { email: string; name: st
   ]);
   return 'returning';
 }
+
+/** Tasks tab. Same columns as `TASK_HEADERS` in src/lib/timing.ts (passed in, so this file keeps no relative imports). */
+export const TASKS_TAB = 'Tasks';
+
+/**
+ * Upsert task rows by `task_id` (column A) for one person. A row owned by someone else (column B) is never
+ * touched (OWASP A01). `deletes` mark that person's existing rows `deleted` (rows are never removed).
+ */
+export async function upsertTasks(
+  sheets: Sheets,
+  headers: readonly string[],
+  email: string,
+  rows: string[][],
+  deletes: { id: string; at: string }[],
+): Promise<{ updated: number; appended: number; deleted: number; refused: number }> {
+  await sheets.ensureTab(TASKS_TAB, [...headers]);
+  const existing = await sheets.getValues(`${TASKS_TAB}!A2:B`);
+  const where = new Map(existing.map((r, i) => [r[0] ?? '', { row: i + 2, owner: (r[1] ?? '').toLowerCase() }]));
+  const mine = (id: string) => where.get(id)?.owner === email.toLowerCase();
+  const lastCol = String.fromCharCode(64 + headers.length);
+  const statusCol = String.fromCharCode(65 + headers.indexOf('status'));
+  const updatedCol = String.fromCharCode(65 + headers.indexOf('updated_at'));
+
+  const updates: { range: string; values: string[][] }[] = [];
+  const appends: string[][] = [];
+  let refused = 0;
+  for (const row of rows) {
+    const id = row[0] ?? '';
+    const at = where.get(id);
+    if (!at) appends.push(row);
+    else if (mine(id)) updates.push({ range: `${TASKS_TAB}!A${at.row}:${lastCol}${at.row}`, values: [row] });
+    else refused += 1;
+  }
+  let deleted = 0;
+  for (const d of deletes) {
+    const at = where.get(d.id);
+    if (!at || !mine(d.id)) continue;
+    updates.push({ range: `${TASKS_TAB}!${statusCol}${at.row}`, values: [['deleted']] }, { range: `${TASKS_TAB}!${updatedCol}${at.row}`, values: [[d.at]] });
+    deleted += 1;
+  }
+  if (updates.length) await sheets.batchUpdate(updates);
+  if (appends.length) await sheets.append(TASKS_TAB, appends);
+  return { updated: updates.length - deleted * 2, appended: appends.length, deleted, refused };
+}
