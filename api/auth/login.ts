@@ -1,5 +1,5 @@
-import { buildAuthUrl, cookie, createOAuthCookie, OAUTH_COOKIE, OAUTH_TTL_SECONDS, pkceChallenge, randomToken, readAuthConfig, redirectUri } from '../_lib/auth';
-import { createLimiter } from '../_lib/limiter';
+import { buildAuthUrl, cookie, createOAuthCookie, OAUTH_COOKIE, OAUTH_TTL_SECONDS, pkceChallenge, randomToken, readAuthConfig, redirectUri } from '../_lib/auth.js';
+import { createLimiter } from '../_lib/limiter.js';
 
 /** GET /api/auth/login → Google consent screen. State, nonce and PKCE verifier ride in a signed, short-lived cookie. */
 const limiter = createLimiter(20, 60_000);

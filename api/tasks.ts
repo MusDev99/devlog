@@ -1,9 +1,9 @@
-import { getCookie, isAllowed, isSameOrigin, readAuthConfig, readSession, SESSION_COOKIE } from './_lib/auth';
-import { createLimiter } from './_lib/limiter';
-import { createSheets, readSheetsConfig, upsertTasks, type Sheets } from './_lib/sheets';
-import { handleTaskSync } from './_lib/tasks-handler';
-import { isNote } from '../src/lib/notes';
-import { TASK_HEADERS, taskRow } from '../src/lib/timing';
+import { getCookie, isAllowed, isSameOrigin, readAuthConfig, readSession, SESSION_COOKIE } from './_lib/auth.js';
+import { createLimiter } from './_lib/limiter.js';
+import { createSheets, readSheetsConfig, upsertTasks, type Sheets } from './_lib/sheets.js';
+import { handleTaskSync } from './_lib/tasks-handler.js';
+import { isNote } from '../src/lib/notes.js';
+import { TASK_HEADERS, taskRow } from '../src/lib/timing.js';
 
 /** POST /api/tasks → upsert the signed-in person's changed tasks into the Tasks tab. */
 const limiter = createLimiter(30, 60_000);
