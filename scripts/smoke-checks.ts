@@ -1,6 +1,6 @@
 /**
  * Post-deploy checks for `npm run smoke -- <url>`. Pure over an injected fetch so tests run without a network.
- * DevLog is a static site (no functions), so they check the headers, the PWA files and that no API is served.
+ * They check the headers, the PWA files, and that the sign-in API refuses anonymous calls (503 before it is set up).
  */
 
 export type Check = { name: string; ok: boolean; detail: string };
@@ -36,9 +36,9 @@ export async function runSmoke(base: string, fetchFn: Fetch): Promise<Check[]> {
     return [manifest.status === 200 && sw.status === 200 && header(sw, 'cache-control').includes('no-cache'), `manifest ${manifest.status}, sw ${sw.status}`];
   });
 
-  await check('no server functions', async () => {
-    const res = await fetchFn(url('/api/standup'), { method: 'POST' });
-    return [res.status === 404 || res.status === 405, String(res.status)];
+  await check('session refuses anonymous', async () => {
+    const res = await fetchFn(url('/api/auth/session'));
+    return [(res.status === 401 || res.status === 503) && header(res, 'cache-control').includes('no-store'), String(res.status)];
   });
 
   return checks;

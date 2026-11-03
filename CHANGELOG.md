@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-11-03 13:00
+
+- feat(auth): Google sign-in is back and now required: OIDC + PKCE, signed cookies (restored from v1.0); any verified Google account self-registers (`ALLOWED_EMAILS` optional)
+- feat(sheets): first sign-in registers the person in the **Users** tab of the owner's Google Sheet (email, name, Google id, registered, last login) through a service account; RAW writes only
+- feat(auth): sign-in screen; a device that signed in before opens straight away offline; "session ended" and "offline" states; account and Sign out in Settings; avatar in the header
+- feat(storage): one IndexedDB per account (`devlog:<email>`); tasks made before sign-in are copied into the first account once
+- chore: `.env.example` back; smoke check "session refuses anonymous" replaces "no server functions"
+
 ## 2026-11-03 10:00
 
 - feat(timer): Start / Pause / Resume / Finish; each task now shows **actual** time (span − pauses) and **span** (first start to finish): the big clock adds "Span 2h · 3 pauses (30m)" and when it started; finished rows and Stats show "1h 30m · span 2h"

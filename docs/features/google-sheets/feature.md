@@ -19,6 +19,18 @@ Delivered in three PRs:
 | T4 | The big clock shows Actual with "Span · pauses" and the start time; the button reads Start / Pause / Resume; ✓ is Finish | Manual run: "45:00 · Paused · Span 1h 00m · 1 pause (15m) · Started 9:00", Resume |
 | T5 | Finished rows show "1h 30m · span 2h 00m"; Stats "Finished today" shows actual (and span on wider screens) | Manual run |
 
+## Acceptance criteria: 2. Google sign-in + Users sheet
+
+| ID | Given / When / Then | Evidence |
+|---|---|---|
+| S1 | No session online → sign-in screen; "Continue with Google" → Google → back signed in, URL cleaned | Manual run with a local mock of the Google round trip (real cookie code) |
+| S2 | First sign-in appends a Users row (email, name, google_id, registered_at, last_login_at); a returning email updates name and last login, no duplicate | `tests/sheets.test.ts` (fake Google) |
+| S3 | Writes are RAW; the service-account JWT is RS256 for the Sheets scope at the fixed token host; the token is cached | `tests/sheets.test.ts` |
+| S4 | Any verified Google account registers unless `ALLOWED_EMAILS` is set; cookies tamper-proof; OAuth and session cookies not interchangeable; ID token checks | `tests/auth.test.ts` |
+| S5 | A device that signed in before opens offline; a server-side sign-out shows "Your session ended"; Sign out returns to the sign-in screen | Manual run |
+| S6 | Each account has its own local database; pre-sign-in tasks go to the first account once | Manual run (`devlog:tester@example.com` created) |
+| S7 | Without a sign-in server (local dev / not set up) the app runs local-only | Manual run on `vite dev` |
+
 ## Laws of UX
 
 | Law | Where |

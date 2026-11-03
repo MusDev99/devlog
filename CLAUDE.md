@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-DevLog: offline-first mobile PWA. A stopwatch for the selected task (Start counts up from 0, Stop keeps the total) beside Tasks on an Eisenhower matrix (urgent × important, plus Unsorted), with story-point sizes (1 / 3 / 5), a Stats screen (daily targets, streaks, 7-day trends, time breakdown, insights), and a standup each morning plus a Friday recap, all on the phone. Static site: no server functions, no AI, no API keys. Vite 7 + Preact 10 + Tailwind 4 + strict TypeScript, deployed on Vercel. Process and standards: [Agentic Coding Style](https://musdev99.github.io/agentic-coding-style) and [BRANCHING.md](https://github.com/MusDev99/agentic-coding-style/blob/main/BRANCHING.md).
+DevLog: offline-first mobile PWA. A stopwatch for the selected task (Start / Pause / Resume / Finish; actual vs span time) beside Tasks on an Eisenhower matrix (urgent × important, plus Unsorted), with story-point sizes (1 / 3 / 5), a Stats screen (daily targets, streaks, 7-day trends, time breakdown, insights), and a standup each morning plus a Friday recap, all on the phone. Offline-first on the device; Google sign-in (required) and a record in the owner's Google Sheet through small Vercel functions. No AI. Vite 7 + Preact 10 + Tailwind 4 + strict TypeScript, deployed on Vercel. Process and standards: [Agentic Coding Style](https://musdev99.github.io/agentic-coding-style) and [BRANCHING.md](https://github.com/MusDev99/agentic-coding-style/blob/main/BRANCHING.md).
 
 ## Commands
 
@@ -29,7 +29,10 @@ Plan (goal, files, risks; owner approves) → Gather (read code/docs first) → 
 - **Screens**: phone: a bottom tab bar Timer / Tasks / Stats (thumb reach, safe-area aware; the mini player and toasts sit above it); ≥ 1024px: Focus (timer + tasks side by side) / Stats in the header. The choice is a per-device pref; a shortcut URL wins on launch.
 - **Standup**: `ruleStandup(cards, today)` in `src/lib/standup.ts` (pure, tested) + `Reports.tsx` (Standup / Week tabs, rebuilt live, Copy). Yesterday = done/doing cards changed on the last earlier active day; Today = done today + everything in Doing; Blockers = everything in Blocked. No AI, no network: nothing leaves the device.
 - **Friday recap**: `src/lib/recap.ts` (pure, tested) + `Reports.tsx` (Week tab, opens first Friday to Sunday); cards changed Monday → today. Rules only, never sent to the server.
-- `src/` and `tests/` import with `.ts` extensions (Node strip-types). No `api/` folder: adding a server function, AI call or API key is a product decision, not a refactor.
+- **Sign-in**: Google OIDC (authorization code + PKCE, hand-rolled, Web Crypto only) in `api/_lib/auth.ts` + `api/auth/{login,callback,session}.ts`. Google hosts are fixed constants (`GOOGLE`); `APP_URL` comes from env, never the Host header. Cookies are HMAC-signed with a signed `typ` (session vs OAuth, never interchangeable), `HttpOnly; SameSite=Lax; Secure`; the session carries email + name. `ALLOWED_EMAILS` is optional (empty = any verified Google account self-registers). The app only learns `?signin=ok|denied`. Client: `src/Root.tsx` gates the app (`SignIn.tsx`), opens straight away for a device that signed in before (cached user in `db.ts`, session checked in the background: `src/lib/session.ts`), and runs local-only when there is no sign-in server (503 / local dev).
+- **Google Sheet**: `api/_lib/sheets.ts`: service-account JWT (RS256, Web Crypto) → access token at the fixed `oauth2.googleapis.com/token`, cached per instance; Sheets REST with `valueInputOption=RAW` always (text that looks like a formula stays text). The callback upserts the **Users** tab (`email | name | google_id | registered_at | last_login_at`; a new email appends = registration). A sheet error never blocks sign-in.
+- **Per-user local data**: `db.ts` `setAccount(email)` switches IndexedDB to `devlog:<email>`; tasks made before sign-in existed are copied once into the first signed-in account (`adoptLegacyTasks`); the old `devlog` DB is kept.
+- `api/` files import shared code **extensionless** and only from modules with type-only imports (Vercel bundles them); no relative imports inside `api/_lib/*`. `src/` and `tests/` import with `.ts` extensions (Node strip-types). Route handlers take `Request` → `Response`; logic that needs the network takes an injected `fetch` so tests never touch Google.
 - Golden set: `tests/golden/standup-cases.json`; unit tests check the rules keep every blocker and invent nothing.
 
 ## Rules
@@ -39,7 +42,7 @@ Plan (goal, files, risks; owner approves) → Gather (read code/docs first) → 
 - Mobile-first: 375px, no horizontal scroll, touch targets ≥ 44px, respect `prefers-reduced-motion` (the global rule in `styles.css` stops all animation). Apply the [Laws of UX](https://lawsofux.com/) and name the law in the PR.
 - Motion and feedback: `press` (squeeze on tap), `state-layer` (hover/press tint), `animate-rise` / `animate-pop` / `animate-glow`. Secondary row actions reveal on hover only where hover exists (`[@media(hover:hover)]`); on touch they stay visible.
 - Security headers/CSP live in `vercel.json`. A new external host (API, font, CDN) must be added to the CSP deliberately.
-- No secrets or env variables are needed; never commit `.env*`.
+- Secrets only in env (Vercel); never commit `.env*`. Document every variable in `.env.example` and the README. Functions fail closed (503) without them.
 - Exact dependency versions; commit `package-lock.json`; `npm audit --omit=dev` before each release.
 
 ## Git
