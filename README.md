@@ -24,6 +24,8 @@ Sign in with Google, time each task (actual vs span), sort them on an urgent × 
 | 🖼️ Google profile photo as your avatar, saved in the Users sheet (`picture_url`) | ✅ v2.7 |
 | ⚙️ Daily targets per profile, saved in your Users row and following you to every device | ✅ v2.7 |
 | ✨ Animated sign-in page: a looping product story (sorting, timing, points, sync) in CSS, no GIF | ✅ v2.7 |
+| ✅ Done bucket: finished tasks leave the matrix and can be restored | ✅ v2.8 |
+| 🔗 Links in tasks: Jira URLs show as their key (SKYIQ-10143), click to open | ✅ v2.8 |
 
 ## 🚀 Quick start
 
@@ -66,7 +68,8 @@ Node 22.18+ (tests run TypeScript directly with `node --test`).
 - Keyboard: **Space** start/stop the selected task, **N** new task. On a phone, a mini player with Stop sticks to the bottom once you scroll.
 - **Reports**: Standup and Week tabs update live; **Copy** pastes them into chat.
 - **Stats** (tab): rings for today's story points, tasks and focus time against your targets; 🔥 days in a row with activity and 🎯 days in a row on your SP target; the last 7 days as Time / Points / Tasks; where your time went by quadrant and task (with minutes per story point); and plain-language insights. Set the targets with ⚙.
-- Tick the circle to finish a task: it stays crossed out in its quadrant for a week, then moves to **List → Done earlier**.
+- Tick the circle (or drag a task onto **Done**) to finish it: it leaves its quadrant and goes to the **Done** bucket under the matrix. **Restore** sends it back to the same quadrant.
+- Paste a link into a task, e.g. `Fix bugs on 10143 https://airasia.atlassian.net/browse/SKYIQ-10143`: the task reads "Fix bugs on 10143" with a **SKYIQ-10143** chip that opens the issue.
 - Start the day with **Build standup**, then **Copy** into your team chat.
 - On Friday the **Friday recap** opens by itself (shipped / in progress / blockers for the week); other days tap **Week so far**.
 - Voice uses the browser's own speech service (Chrome/Safari); the mic button hides where it is missing.

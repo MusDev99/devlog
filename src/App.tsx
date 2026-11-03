@@ -10,10 +10,12 @@ import { PLACE_NAMES } from './components/TaskRow.tsx';
 import { TimerPanel } from './components/TimerPanel.tsx';
 import { allNotes, deleteNote, keepStorage, loadPref, loadTargets, saveNote, savePref, saveTargets, targetsPending, type User } from './lib/db.ts';
 import { isScreen, launchParams, type Screen } from './lib/launch.ts';
+import { plainText } from './lib/links.ts';
 import {
   elapsedMs,
   formatClock,
   moveNote,
+  placeOf,
   resetTimer,
   startTimer,
   stopTimer,
@@ -163,7 +165,7 @@ export function App({ user, onSignOut }: { user: User | null; onSignOut: () => v
   }, [runningTask?.id]);
 
   useEffect(() => {
-    document.title = runningTask ? `${formatClock(elapsedMs(runningTask, nowMs))} · ${runningTask.text}` : 'DevLog';
+    document.title = runningTask ? `${formatClock(elapsedMs(runningTask, nowMs))} · ${plainText(runningTask.text)}` : 'DevLog';
   }, [nowMs, runningTask]);
 
   // Phone: once the big timer scrolls away, a mini player keeps play/pause in thumb reach (Fitts).
@@ -231,7 +233,9 @@ export function App({ user, onSignOut }: { user: User | null; onSignOut: () => v
 
   const setStatus = (note: Note, tag: Tag) => {
     const at = new Date();
-    return save([moveNote(note, tag, at, dayKey(at, timeZone))], { message: tag === 'done' ? 'Marked done' : `Status: ${TAG_LABELS[tag]}`, before: note });
+    const message =
+      tag === 'done' ? 'Marked done' : note.tag === 'done' ? `Restored to ${PLACE_NAMES[placeOf(note)]}` : `Status: ${TAG_LABELS[tag]}`;
+    return save([moveNote(note, tag, at, dayKey(at, timeZone))], { message, before: note });
   };
 
   async function remove(note: Note) {
@@ -467,7 +471,7 @@ export function App({ user, onSignOut }: { user: User | null; onSignOut: () => v
           <div class="mx-auto flex max-w-md items-center gap-3 rounded-full border border-line/70 bg-surface-high/95 py-1.5 pr-1.5 pl-4 shadow-2xl shadow-black/40 backdrop-blur">
             <span aria-hidden="true" class={`size-2 shrink-0 rounded-full bg-accent ${running ? 'animate-glow' : ''}`} />
             <span class="text-lg font-semibold tabular-nums">{formatClock(selected ? elapsedMs(selected, nowMs) : 0)}</span>
-            <span class="min-w-0 flex-1 truncate text-sm text-muted">{selected?.text}</span>
+            <span class="min-w-0 flex-1 truncate text-sm text-muted">{selected ? plainText(selected.text) : ''}</span>
             <button
               type="button"
               onClick={toggle}

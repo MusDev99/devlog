@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-11-03 23:00
+
+- feat(tasks): finishing a task clears it from its quadrant and moves it to a **Done** bucket under the matrix (newest first, older than a week under Earlier) with quadrant, points, actual / span time and day; **Restore** sends it back to its quadrant ("Restored to Do now", undoable); drop a task on Done to finish it
+- feat(tasks): links in task text become chips: Jira URLs show their issue key (e.g. SKYIQ-10143), GitHub PRs / issues `owner/repo#n`, others a short host/path; they open in a new tab; titles show the words only, and the timer, stats and tab title show labels instead of raw URLs
+- change: the List view shows open work only (finished work is in Done)
+
 ## 2026-11-03 21:30
 
 - feat(signin): redesigned sign-in page: headline with gradient, four feature tiles, the official multi-colour Google button with hover lift, drifting colour backdrop and dot grid
