@@ -22,6 +22,7 @@ Sign in with Google, time each task (actual vs span), sort them on an urgent × 
 | 📄 Every task in the **Tasks** tab: start, end, pauses, actual vs span; offline changes queue and sync when back | ✅ v2.6 |
 | 🔢 Story points on the Fibonacci scale: 1, 2, 3, 5, 8, 13, 21 | ✅ v2.7 |
 | 🖼️ Google profile photo as your avatar, saved in the Users sheet (`picture_url`) | ✅ v2.7 |
+| ⚙️ Daily targets per profile, saved in your Users row and following you to every device | ✅ v2.7 |
 
 ## 🚀 Quick start
 
@@ -42,7 +43,7 @@ Node 22.18+ (tests run TypeScript directly with `node --test`).
 | `src/components/` | `TimerPanel` (stopwatch ring), `SessionTasks` (List / Matrix, Unsorted, drag), `TaskRow` (Start/Stop per task), `Composer` (add row), `Reports` (Standup / Week), `StatsView`, `SettingsDialog` (daily targets), `Icon` |
 | `src/styles.css` | Material Design 3 colour roles as Tailwind `@theme` tokens, `state-layer` utility |
 | `api/auth/*`, `api/_lib/auth.ts` | Google sign-in (OIDC + PKCE), signed session cookie |
-| `api/_lib/sheets.ts`, `api/tasks.ts` | Google Sheets as a service account (RAW writes): Users tab, Tasks tab upsert |
+| `api/_lib/sheets.ts`, `api/tasks.ts`, `api/settings.ts` | Google Sheets as a service account (RAW writes): Users tab (incl. per-profile targets), Tasks tab upsert |
 | `tests/golden/` | Standup golden set (10 note days): the rules keep every blocker and invent nothing |
 | `src/lib/` | Pure logic (`notes.ts` incl. the stopwatch, `matrix.ts`, `stats.ts`, `standup.ts`, `recap.ts`, `today.ts`), `db.ts` (IndexedDB, the only storage module), `speech.ts`, PWA helpers |
 | `public/sw.js`, `public/sw-policy.js` | Service worker and its tested routing rules |

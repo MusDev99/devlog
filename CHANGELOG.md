@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-11-03 20:30
+
+- feat(settings): daily targets are per profile: saved in your Users row (`target_tasks | target_points | target_minutes`) and loaded at sign-in, so they follow you to every device; cached per account for offline use
+- feat(settings): a profile with no saved targets adopts the device's current set once; a change made offline is kept and sent when back online; Settings says where targets are saved
+- feat(api): `GET` / `PUT /api/settings` (signed-in only, PUT same-origin, validated, rate limited); local `npm run dev` serves it too
+
 ## 2026-11-03 19:30
 
 - feat(auth): the Google profile photo URL is read at sign-in (scope `profile`), kept in the session, shown as the avatar in the header and Settings (initial as fallback), and saved in a new `picture_url` column of the **Users** tab; existing sheets get the header added

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'preact/hooks';
 import type { User } from '../lib/db.ts';
-import { DEFAULT_TARGETS, formatMinutes, TARGET_LIMITS, type Targets } from '../lib/stats.ts';
+import { formatMinutes } from '../lib/stats.ts';
+import { DEFAULT_TARGETS, TARGET_LIMITS, type Targets } from '../lib/targets.ts';
 import { Avatar } from './Avatar.tsx';
 import { Icon } from './Icon.tsx';
 
@@ -56,7 +57,10 @@ export function SettingsDialog({ open, user, onSignOut, targets, onSave, onClose
             <Icon name="close" class="size-5" />
           </button>
         </div>
-        <p class="mt-1 text-sm text-muted">Daily targets: stats, rings and streaks measure each day against these.</p>
+        <p class="mt-1 text-sm text-muted">
+          Daily targets: stats, rings and streaks measure each day against these.{' '}
+          {user ? 'Saved to your profile, so they follow you to every device.' : 'Saved on this device.'}
+        </p>
 
 
         <ul class="mt-5 grid gap-3">
@@ -88,7 +92,7 @@ export function SettingsDialog({ open, user, onSignOut, targets, onSave, onClose
               <Avatar user={user} size="size-10" />
               <div class="min-w-0 flex-1">
                 <p class="truncate font-medium">{user.name || user.email}</p>
-                <p class="truncate text-xs text-muted">{user.email} · tasks sync to the team sheet</p>
+                <p class="truncate text-xs text-muted">{user.email} · tasks and targets sync to the team sheet</p>
               </div>
               <button type="button" onClick={onSignOut} class="press state-layer inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-full px-3 text-sm font-medium text-error">
                 <Icon name="logout" class="size-[18px]" />

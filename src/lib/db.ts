@@ -1,6 +1,6 @@
 import { isNote, type Note } from './notes.ts';
 import type { SyncState } from './sync.ts';
-import { DEFAULT_TARGETS, isTargets, type Targets } from './stats.ts';
+import { DEFAULT_TARGETS, isTargets, type Targets } from './targets.ts';
 
 /**
  * IndexedDB and localStorage access: the only module that touches storage on the device.
@@ -13,11 +13,14 @@ const SYNC = 'sync';
 const ADOPTED_KEY = 'devlog.legacy-adopted';
 
 let dbName = LEGACY_DB;
+/** The signed-in person's email (lowercase), or null: scopes per-profile preferences such as targets. */
+let account: string | null = null;
 let dbPromise: Promise<IDBDatabase> | null = null;
 
 /** Point storage at this person's database (null = the shared, pre-sign-in one). Call before reading tasks. */
 export function setAccount(email: string | null): void {
-  const next = email ? `devlog:${email.toLowerCase()}` : LEGACY_DB;
+  account = email ? email.toLowerCase() : null;
+  const next = account ? `devlog:${account}` : LEGACY_DB;
   if (next === dbName) return;
   dbPromise?.then((db) => db.close()).catch(() => undefined);
   dbName = next;
@@ -154,20 +157,32 @@ export function savePref(key: string, value: string): void {
 }
 
 const TARGETS_KEY = 'devlog.targets';
+/** Per profile: `devlog.targets:<email>`; the plain key is the local-only (signed-out) set and seeds a new profile. */
+const targetsKey = () => (account ? `${TARGETS_KEY}:${account}` : TARGETS_KEY);
+const pendingKey = () => `devlog.targets-pending:${account ?? ''}`;
 
-/** Daily targets from Settings; defaults when absent or invalid. */
-export function loadTargets(): Targets {
+function readTargets(key: string): Targets | null {
   try {
-    const value: unknown = JSON.parse(loadPref(TARGETS_KEY) ?? 'null');
-    return isTargets(value) ? value : DEFAULT_TARGETS;
+    const value: unknown = JSON.parse(loadPref(key) ?? 'null');
+    return isTargets(value) ? value : null;
   } catch {
-    return DEFAULT_TARGETS;
+    return null;
   }
 }
 
-export function saveTargets(targets: Targets): void {
-  savePref(TARGETS_KEY, JSON.stringify(targets));
+/** This profile's daily targets (cached on the device); a new profile starts from the device's set, else defaults. */
+export function loadTargets(): Targets {
+  return readTargets(targetsKey()) ?? readTargets(TARGETS_KEY) ?? DEFAULT_TARGETS;
 }
+
+/** Cache this profile's targets. `pending` marks a change the Users sheet has not confirmed yet. */
+export function saveTargets(targets: Targets, pending = false): void {
+  savePref(targetsKey(), JSON.stringify(targets));
+  if (account) savePref(pendingKey(), pending ? '1' : '');
+}
+
+/** True when this profile changed its targets and the sheet has not confirmed them (offline save). */
+export const targetsPending = () => account !== null && loadPref(pendingKey()) === '1';
 
 const USER_KEY = 'devlog.user';
 /** `picture`: the Google profile photo URL ('' when there is none). */

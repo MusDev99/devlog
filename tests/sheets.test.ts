@@ -1,6 +1,17 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { createSheets, readSheetsConfig, serviceJwt, SHEETS, upsertUser, USERS_TAB, type SheetsConfig } from '../api/_lib/sheets.ts';
+import {
+  createSheets,
+  readSheetsConfig,
+  readUserTargets,
+  serviceJwt,
+  SHEETS,
+  upsertUser,
+  USER_HEADERS,
+  USERS_TAB,
+  writeUserTargets,
+  type SheetsConfig,
+} from '../api/_lib/sheets.ts';
 
 const NOW = Date.UTC(2026, 10, 3, 9, 0, 0);
 const dec = new TextDecoder();
@@ -75,6 +86,14 @@ function fakeGoogle(tabs: Record<string, string[][]>) {
     }
     const header = path.match(/^\/values\/(\w+)!1:1/);
     if (header) return ok({ values: (tabs[header[1] ?? ''] ?? []).slice(0, 1).filter((r) => r.length > 0) });
+    const cells = path.match(/^\/values\/(\w+)!([A-Z])(\d+):([A-Z])(\d+)$/);
+    if (cells && cells[2] !== 'A') {
+      const row = (tabs[cells[1] ?? ''] ?? [])[Number(cells[3]) - 1] ?? [];
+      const from = (cells[2] ?? 'A').charCodeAt(0) - 65;
+      const to = (cells[4] ?? 'A').charCodeAt(0) - 65;
+      const slice = row.slice(from, to + 1);
+      return ok({ values: slice.length ? [slice] : [] });
+    }
     const get = path.match(/^\/values\/(\w+)!A(\d+):A(\d*)/);
     if (get) {
       const from = Number(get[2]) - 1;
@@ -95,7 +114,7 @@ test('upsertUser: creates the tab and headers, registers a new email, updates a 
   const pic = 'https://lh3.googleusercontent.com/a/ana=s96-c';
   assert.equal(await upsertUser(sheets, { email: 'Ana@Example.com', name: 'Ana', sub: 'g1', picture: pic }, '2026-11-03T09:00:00.000Z'), 'registered');
   assert.deepEqual(google.tabs[USERS_TAB], [
-    ['email', 'name', 'google_id', 'registered_at', 'last_login_at', 'picture_url'],
+    USER_HEADERS,
     ['Ana@Example.com', 'Ana', 'g1', '2026-11-03T09:00:00.000Z', '2026-11-03T09:00:00.000Z', pic],
   ]);
 
@@ -116,8 +135,21 @@ test('an existing Users tab from before picture_url gains the header; its rows s
   const old = [['email', 'name', 'google_id', 'registered_at', 'last_login_at'], ['bo@example.com', 'Bo', 'g2', 'r', 'l']];
   const google = fakeGoogle({ [USERS_TAB]: old.map((r) => [...r]) });
   await upsertUser(createSheets(cfgWith(pem), google.fetchFn, () => NOW), { email: 'bo@example.com', name: 'Bo', sub: 'g2', picture: '' }, 'now');
-  assert.deepEqual(google.tabs[USERS_TAB]?.[0], ['email', 'name', 'google_id', 'registered_at', 'last_login_at', 'picture_url']);
+  assert.deepEqual(google.tabs[USERS_TAB]?.[0], USER_HEADERS);
   assert.deepEqual(google.tabs[USERS_TAB]?.[1], ['bo@example.com', 'Bo', 'g2', 'r', 'now', '']);
+});
+
+test('targets live in the person’s Users row (G:I): blank until saved, written in place, none for strangers', async () => {
+  const { pem } = await testKey();
+  const google = fakeGoogle({ [USERS_TAB]: [[...USER_HEADERS], ['ana@example.com', 'Ana', 'g1', 'r', 'l', ''], ['bo@example.com', 'Bo', 'g2', 'r', 'l', '']] });
+  const sheets = createSheets(cfgWith(pem), google.fetchFn, () => NOW);
+  assert.deepEqual(await readUserTargets(sheets, 'Bo@Example.com'), ['', '', '']);
+  assert.equal(await writeUserTargets(sheets, 'bo@example.com', ['5', '21', '180']), true);
+  assert.deepEqual(google.tabs[USERS_TAB]?.[2], ['bo@example.com', 'Bo', 'g2', 'r', 'l', '', '5', '21', '180']);
+  assert.deepEqual(await readUserTargets(sheets, 'bo@example.com'), ['5', '21', '180']);
+  assert.deepEqual(google.tabs[USERS_TAB]?.[1]?.slice(6), [], "Ana's row untouched");
+  assert.equal(await readUserTargets(sheets, 'stranger@example.com'), null);
+  assert.equal(await writeUserTargets(sheets, 'stranger@example.com', ['1', '1', '15']), false);
 });
 
 test('a Sheets error surfaces as an exception (the caller decides what to do)', async () => {

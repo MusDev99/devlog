@@ -8,7 +8,7 @@ import { StatsView } from './components/StatsView.tsx';
 import { SyncChip } from './components/SyncChip.tsx';
 import { PLACE_NAMES } from './components/TaskRow.tsx';
 import { TimerPanel } from './components/TimerPanel.tsx';
-import { allNotes, deleteNote, keepStorage, loadPref, loadTargets, saveNote, savePref, saveTargets, type User } from './lib/db.ts';
+import { allNotes, deleteNote, keepStorage, loadPref, loadTargets, saveNote, savePref, saveTargets, targetsPending, type User } from './lib/db.ts';
 import { isScreen, launchParams, type Screen } from './lib/launch.ts';
 import {
   elapsedMs,
@@ -24,7 +24,9 @@ import {
   type Size,
   type Tag,
 } from './lib/notes.ts';
+import { fetchRemoteTargets, pushTargets, sameTargets } from './lib/profile-settings.ts';
 import { setBadge, useInstall, useOnline, useUpdate } from './lib/pwa.ts';
+import type { Targets } from './lib/targets.ts';
 import { useSync } from './lib/use-sync.ts';
 import { dayKey, dayLabel, greeting } from './lib/today.ts';
 
@@ -68,6 +70,44 @@ export function App({ user, onSignOut }: { user: User | null; onSignOut: () => v
   const [screen, setScreenState] = useState<Screen>(savedScreen);
   const [targets, setTargets] = useState(loadTargets);
   const [settingsOpen, setSettingsOpen] = useState(false);
+
+  /**
+   * Per-profile targets live in the Users sheet and follow the person. On sign-in (and back online):
+   * an unconfirmed local change goes up first; a profile with nothing saved adopts this device's set;
+   * otherwise the profile's set wins and is cached here.
+   */
+  async function syncTargets(local: Targets) {
+    if (!user) return;
+    if (targetsPending()) {
+      if (await pushTargets(local)) saveTargets(local);
+      return;
+    }
+    const remote = await fetchRemoteTargets();
+    if (remote.status !== 'ok') return;
+    if (remote.targets === null) {
+      if (await pushTargets(local)) saveTargets(local);
+    } else if (!sameTargets(remote.targets, local)) {
+      saveTargets(remote.targets);
+      setTargets(remote.targets);
+    }
+  }
+
+  useEffect(() => {
+    void syncTargets(targets);
+    const again = () => void syncTargets(loadTargets());
+    window.addEventListener('online', again);
+    return () => window.removeEventListener('online', again);
+  }, [user?.email]);
+
+  async function saveSettings(next: Targets) {
+    setTargets(next);
+    saveTargets(next, user !== null);
+    setSettingsOpen(false);
+    if (!user) return setToast('Daily targets saved on this device');
+    const ok = await pushTargets(next);
+    if (ok) saveTargets(next);
+    setToast(ok ? 'Saved to your profile' : 'Saved here; it will reach your profile when you are back online');
+  }
   const install = useInstall();
   // Signed in: every change goes to the team's Google Sheet; local-only mode never syncs.
   const sync = useSync(user !== null && load.state === 'ready', load);
@@ -386,12 +426,7 @@ export function App({ user, onSignOut }: { user: User | null; onSignOut: () => v
         onSignOut={onSignOut}
         targets={targets}
         onClose={() => setSettingsOpen(false)}
-        onSave={(next) => {
-          setTargets(next);
-          saveTargets(next);
-          setSettingsOpen(false);
-          setToast('Daily targets saved');
-        }}
+        onSave={(next) => void saveSettings(next)}
       />
 
       {/* Phone: bottom tab bar in thumb reach (Fitts), the pattern people know from native apps (Jakob). */}

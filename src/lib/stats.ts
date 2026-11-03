@@ -1,21 +1,10 @@
 import { placeOf, PLACES, sizeOf, type Note, type Place } from './notes.ts';
+import type { Targets } from './targets.ts';
 import { dayKey } from './today.ts';
 
+export { DEFAULT_TARGETS, isTargets, TARGET_LIMITS, type Targets } from './targets.ts';
+
 /** Daily activity stats, streaks, weekly review, time breakdown and insights. Pure: `today`, `nowMs` and the zone are injected. */
-
-export type Targets = { tasks: number; points: number; minutes: number };
-export const DEFAULT_TARGETS: Targets = { tasks: 3, points: 10, minutes: 120 };
-/** min, max, step per target: what the settings steppers allow. */
-export const TARGET_LIMITS: Record<keyof Targets, [number, number, number]> = { tasks: [1, 20, 1], points: [1, 100, 1], minutes: [15, 600, 15] };
-
-export function isTargets(value: unknown): value is Targets {
-  if (typeof value !== 'object' || value === null) return false;
-  const v = value as Record<string, unknown>;
-  return (Object.keys(TARGET_LIMITS) as (keyof Targets)[]).every((k) => {
-    const [min, max] = TARGET_LIMITS[k];
-    return Number.isInteger(v[k]) && (v[k] as number) >= min && (v[k] as number) <= max;
-  });
-}
 
 /** One day: stopwatch time and runs (by the day each run started), finished tasks and their points (by the day they were done). */
 export type DayStat = { day: string; focusMs: number; runs: number; done: number; points: number };
