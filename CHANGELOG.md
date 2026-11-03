@@ -1,5 +1,10 @@
 # Changelog
 
+## 2026-11-03 10:00
+
+- feat(timer): Start / Pause / Resume / Finish; each task now shows **actual** time (span − pauses) and **span** (first start to finish): the big clock adds "Span 2h · 3 pauses (30m)" and when it started; finished rows and Stats show "1h 30m · span 2h"
+- feat(timer): `src/lib/timing.ts` computes start, end, pauses, actual and span from the stopwatch runs (tested with 11:00 → 13:00, three 10-minute pauses → 1h 30m / 2h)
+
 ## 2026-11-03 03:30
 
 - feat(pwa): mobile-first shell: bottom tab bar (Timer / Tasks / Stats) with open-task badge and running dot, safe-area aware; mini player and toasts sit above it

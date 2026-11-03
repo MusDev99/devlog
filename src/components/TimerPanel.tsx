@@ -1,4 +1,5 @@
 import { elapsedMs, formatClock, formatDuration, runMs, type Note } from '../lib/notes.ts';
+import { taskTiming } from '../lib/timing.ts';
 import { Icon } from './Icon.tsx';
 
 type Props = {
@@ -10,12 +11,14 @@ type Props = {
 };
 
 const R = 44;
+const clockTime = (iso: string) => new Intl.DateTimeFormat(undefined, { hour: 'numeric', minute: '2-digit' }).format(new Date(iso));
 const CIRCUMFERENCE = 2 * Math.PI * R;
 
 /**
- * Stopwatch for the selected task: counts up from 0 on Start, banks the time on Stop, and keeps a
- * running total per task. One big round Start/Stop in the middle (Fitts, Von Restorff); Reset and
- * Done small on either side. The ring sweeps once a minute so a running clock is visible at a glance.
+ * Stopwatch for the selected task: Start counts up from 0, Pause / Resume, Finish. The big number is
+ * the actual time (span minus pauses); the line under it gives the span and the pauses. One big round
+ * Start / Pause in the middle (Fitts, Von Restorff); Reset and Finish small on either side. The ring
+ * sweeps once a minute so a running clock is visible at a glance.
  */
 export function TimerPanel({ task, nowMs, onToggle, onReset, onDone }: Props) {
   const running = Boolean(task?.startedAt);
@@ -23,7 +26,10 @@ export function TimerPanel({ task, nowMs, onToggle, onReset, onDone }: Props) {
   const run = task ? runMs(task, nowMs) : 0;
   const sweep = running ? (total % 60_000) / 60_000 : 0;
   const side = 'press state-layer grid size-12 place-items-center rounded-full bg-surface-high text-muted hover:text-fg disabled:opacity-40';
-  const status = !task ? 'No task selected' : running ? 'Running' : total > 0 ? 'Stopped' : 'Ready';
+  const timing = task ? taskTiming(task, nowMs) : null;
+  const status = !task ? 'No task selected' : running ? 'Running' : total > 0 ? 'Paused' : 'Ready';
+  const action = running ? 'Pause' : total > 0 ? 'Resume' : 'Start';
+  const pauses = timing && timing.pauses > 0 ? ` · ${timing.pauses} ${timing.pauses === 1 ? 'pause' : 'pauses'} (${formatDuration(timing.pausedMs, false)})` : '';
 
   return (
     <section aria-label="Task stopwatch" class="rounded-[28px] border border-line/70 bg-surface/80 p-4 shadow-xl shadow-black/20 backdrop-blur sm:p-6">
@@ -54,11 +60,12 @@ export function TimerPanel({ task, nowMs, onToggle, onReset, onDone }: Props) {
           />
         </svg>
         <div class="absolute inset-0 flex flex-col items-center justify-center gap-1 px-7 text-center">
-          <p class="text-[11px] font-semibold tracking-[0.18em] text-accent uppercase">Total elapsed</p>
+          <p class="text-[11px] font-semibold tracking-[0.18em] text-accent uppercase">Actual</p>
           <p role="timer" aria-live="off" class={`leading-none font-semibold tracking-tight tabular-nums ${total >= 3_600_000 ? 'text-5xl sm:text-[3.25rem]' : 'text-[3.5rem] sm:text-[4rem]'}`}>
             {formatClock(total)}
           </p>
           <p class="text-sm text-muted">{running ? `This run ${formatClock(run)}` : status}</p>
+          {timing?.start && <p class="text-xs text-muted tabular-nums">Span {formatDuration(timing.spanMs, false)}{pauses}</p>}
         </div>
       </div>
 
@@ -70,19 +77,19 @@ export function TimerPanel({ task, nowMs, onToggle, onReset, onDone }: Props) {
           type="button"
           onClick={onToggle}
           disabled={!task}
-          aria-label={running ? 'Stop' : 'Start'}
-          title={`${running ? 'Stop' : 'Start'} (Space)`}
+          aria-label={action}
+          title={`${action} (Space)`}
           class="press state-layer grid size-[72px] place-items-center rounded-full bg-accent text-on-accent shadow-lg shadow-[color-mix(in_oklab,var(--color-accent)_35%,transparent)] disabled:opacity-40 disabled:shadow-none"
         >
-          <Icon name={running ? 'stop' : 'play'} class={`size-8 ${running ? '' : 'translate-x-0.5'}`} />
+          <Icon name={running ? 'pause' : 'play'} class={`size-8 ${running ? '' : 'translate-x-0.5'}`} />
         </button>
-        <button type="button" onClick={onDone} disabled={!task} aria-label="Stop and mark done" title="Stop and mark done" class={side}>
+        <button type="button" onClick={onDone} disabled={!task} aria-label="Finish task" title="Finish task" class={side}>
           <Icon name="check" class="size-5" />
         </button>
       </div>
 
       <p class="mt-4 text-center text-xs text-muted">
-        {task && total > 0 && !running ? `Logged ${formatDuration(total, false)} so far` : 'Start counts up · Stop keeps the total'}
+        {timing?.start ? `Started ${clockTime(timing.start)}` : 'Start · Pause · Resume · Finish'}
       </p>
     </section>
   );

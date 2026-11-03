@@ -53,7 +53,7 @@ Node 22.18+ (tests run TypeScript directly with `node --test`).
 
 - New tasks land in **Unsorted** (it hides when empty); pick their size (1 / 3 / 5 SP) before adding. ▶ next to the field adds a task and starts its stopwatch. `wip:`, `b:` (blocked) or `done:` set the status.
 - Drag a task onto a quadrant with the mouse, or long-press then drag on a phone. ⋮ moves it without dragging and changes size, status or deletes.
-- Every task has its own ▶ / ■. **Start** counts up from 0 (or from the task's total so far), **Stop** keeps the total. Only one runs at a time; starting another stops the first. The big clock shows the selected task, with Reset (undoable) and ✓ Done beside it. While a clock runs, the app turns teal.
+- Every task has its own ▶ / ⏸. **Start** counts up from 0, **Pause** keeps the total, **Resume** carries on, ✓ **Finish** ends it. Two readings: **actual** (time the clock ran) and **span** (first start to finish, pauses included): 11:00 → 13:00 with three 10-minute pauses is 1h 30m actual, 2h span. Only one runs at a time; starting another pauses the first. The big clock shows the selected task with Reset (undoable) beside it. While a clock runs, the app turns teal.
 - Keyboard: **Space** start/stop the selected task, **N** new task. On a phone, a mini player with Stop sticks to the bottom once you scroll.
 - **Reports**: Standup and Week tabs update live; **Copy** pastes them into chat.
 - **Stats** (tab): rings for today's story points, tasks and focus time against your targets; 🔥 days in a row with activity and 🎯 days in a row on your SP target; the last 7 days as Time / Points / Tasks; where your time went by quadrant and task (with minutes per story point); and plain-language insights. Set the targets with ⚙.

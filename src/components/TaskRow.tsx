@@ -1,10 +1,11 @@
 import { useState } from 'preact/hooks';
 import { elapsedMs, formatClock, formatDuration, PLACES, placeOf, QUADRANT_LABELS, SIZES, sizeOf, TAG_LABELS, type Note, type Place, type Size, type Tag } from '../lib/notes.ts';
+import { taskTiming } from '../lib/timing.ts';
 import { Icon } from './Icon.tsx';
 
 export type RowActions = {
   onSelect: (note: Note) => void;
-  /** Start or stop this task's stopwatch (it also becomes the selected task). */
+  /** Start, pause or resume this task's stopwatch (it also becomes the selected task). */
   onTimer: (note: Note) => void;
   onStatus: (note: Note, tag: Tag) => void;
   onPlace: (note: Note, place: Place) => void;
@@ -52,6 +53,8 @@ export function TaskRow({ note, nowMs, focused, showPlace, onPointerDown, onSele
   const running = Boolean(note.startedAt);
   const spent = elapsedMs(note, nowMs);
   const logged = spent < 60_000 ? `${Math.floor(spent / 1000)}s` : formatDuration(spent, false);
+  const timing = done ? taskTiming(note, nowMs) : null;
+  const span = timing?.start && timing.pausedMs >= 60_000 ? formatDuration(timing.spanMs, false) : null;
   const chip = 'press state-layer inline-flex min-h-11 items-center gap-1.5 rounded-xl bg-surface-highest/60 px-3 text-sm font-medium';
 
   return (
@@ -90,10 +93,12 @@ export function TaskRow({ note, nowMs, focused, showPlace, onPointerDown, onSele
           {(spent > 0 || STATUS_TONE[note.tag] || showPlace) && (
             <span class="mt-1 flex flex-wrap items-center gap-1.5 text-xs text-muted">
               {spent > 0 && (
-                <span class={`tabular-nums ${running ? 'font-semibold text-accent' : ''}`} aria-label={`${logged} logged`}>
+                <span class={`tabular-nums ${running ? 'font-semibold text-accent' : ''}`} aria-label={`${logged} actual`}>
                   {running ? formatClock(spent) : logged}
                 </span>
               )}
+              {/* Finished: actual vs span, so pauses are visible at a glance. */}
+              {done && span && <span class="tabular-nums">· span {span}</span>}
               {STATUS_TONE[note.tag] && <span class={`rounded-md px-1.5 py-px font-medium ${STATUS_TONE[note.tag]}`}>{TAG_LABELS[note.tag]}</span>}
               {showPlace && (
                 <span class={`inline-flex items-center gap-1 ${PLACE_TONE[place].text}`}>
@@ -112,11 +117,11 @@ export function TaskRow({ note, nowMs, focused, showPlace, onPointerDown, onSele
             type="button"
             onClick={() => onTimer(note)}
             aria-pressed={running}
-            aria-label={`${running ? 'Stop' : 'Start'} timer: ${note.text}`}
-            title={running ? 'Stop' : 'Start'}
+            aria-label={`${running ? 'Pause' : spent > 0 ? 'Resume' : 'Start'} timer: ${note.text}`}
+            title={running ? 'Pause' : spent > 0 ? 'Resume' : 'Start'}
             class={`press state-layer grid size-11 shrink-0 place-items-center rounded-full ${running ? 'bg-accent text-on-accent' : 'text-accent'}`}
           >
-            <Icon name={running ? 'stop' : 'play'} class="size-5" />
+            <Icon name={running ? 'pause' : 'play'} class="size-5" />
           </button>
         )}
         <button

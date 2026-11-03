@@ -16,6 +16,7 @@ import {
   type Insight,
   type Targets,
 } from '../lib/stats.ts';
+import { taskTiming } from '../lib/timing.ts';
 import { Icon, type IconName } from './Icon.tsx';
 import { PLACE_NAMES, PLACE_TONE } from './TaskRow.tsx';
 
@@ -96,7 +97,7 @@ export function StatsView({ tasks, today, nowMs, timeZone, targets, onEditTarget
                   <Icon name="check" class="size-3.5" />
                 </span>
                 <span class="min-w-0 flex-1 truncate">{t.text}</span>
-                {(t.spentMs ?? 0) >= 60_000 && <span class="shrink-0 text-xs text-muted tabular-nums">{formatMinutes(t.spentMs ?? 0)}</span>}
+                <FinishedTime note={t} nowMs={nowMs} />
                 <span class="shrink-0 rounded-md bg-primary/15 px-1.5 py-0.5 text-xs font-semibold text-primary tabular-nums">+{sizeOf(t)} SP</span>
               </li>
             ))}
@@ -351,5 +352,17 @@ function InsightRow({ insight }: { insight: Insight }) {
       <Icon name={look.icon} class={`mt-px size-5 shrink-0 ${look.tone}`} />
       <span>{insight.text}</span>
     </li>
+  );
+}
+
+/** "1h 30m · span 2h" for a finished task: the work, then the clock time it took including pauses. */
+function FinishedTime({ note, nowMs }: { note: Note; nowMs: number }) {
+  const t = taskTiming(note, nowMs);
+  if (!t || t.actualMs < 60_000) return null;
+  return (
+    <span class="shrink-0 text-xs text-muted tabular-nums" title={t.start ? `${t.pauses} pauses, ${formatMinutes(t.pausedMs)} paused` : undefined}>
+      {formatMinutes(t.actualMs)}
+      {t.start && t.pausedMs >= 60_000 && <span class="hidden sm:inline"> · span {formatMinutes(t.spanMs)}</span>}
+    </span>
   );
 }
