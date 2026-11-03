@@ -6,7 +6,7 @@ import { dayKey } from './today.ts';
 export type Targets = { tasks: number; points: number; minutes: number };
 export const DEFAULT_TARGETS: Targets = { tasks: 3, points: 10, minutes: 120 };
 /** min, max, step per target: what the settings steppers allow. */
-export const TARGET_LIMITS: Record<keyof Targets, [number, number, number]> = { tasks: [1, 20, 1], points: [1, 60, 1], minutes: [15, 600, 15] };
+export const TARGET_LIMITS: Record<keyof Targets, [number, number, number]> = { tasks: [1, 20, 1], points: [1, 100, 1], minutes: [15, 600, 15] };
 
 export function isTargets(value: unknown): value is Targets {
   if (typeof value !== 'object' || value === null) return false;

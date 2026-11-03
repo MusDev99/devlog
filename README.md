@@ -20,6 +20,7 @@ Sign in with Google, time each task (actual vs span), sort them on an urgent × 
 | 📲 Mobile-first PWA: bottom tab bar, Install button (iPhone: Add to Home Screen hint), app shortcuts, update prompt, icon badge, persistent storage, fully offline launch | ✅ v2.5 |
 | 🔐 Google sign-in (required, self-registration), Users tab in the team's Google Sheet, per-account data on the device | ✅ v2.6 |
 | 📄 Every task in the **Tasks** tab: start, end, pauses, actual vs span; offline changes queue and sync when back | ✅ v2.6 |
+| 🔢 Story points on the Fibonacci scale: 1, 2, 3, 5, 8, 13, 21 | ✅ v2.7 |
 
 ## 🚀 Quick start
 
@@ -56,7 +57,7 @@ Node 22.18+ (tests run TypeScript directly with `node --test`).
 - Signed in, every change lands in the team's Google Sheet: **Users** (one row per person) and **Tasks** (one row per task: start, end, pauses, *actual* = time worked, *span* = start to finish). The cloud chip in the header says Synced, Syncing, how many changes wait while offline, or Retry.
 - A new version shows **New version ready · Reload**; nothing changes under you until you tap it.
 
-- New tasks land in **Unsorted** (it hides when empty); pick their size (1 / 3 / 5 SP) before adding. ▶ next to the field adds a task and starts its stopwatch. `wip:`, `b:` (blocked) or `done:` set the status.
+- New tasks land in **Unsorted** (it hides when empty); pick their story points (Fibonacci: 1, 2, 3, 5, 8, 13, 21) before adding. ▶ next to the field adds a task and starts its stopwatch. `wip:`, `b:` (blocked) or `done:` set the status.
 - Drag a task onto a quadrant with the mouse, or long-press then drag on a phone. ⋮ moves it without dragging and changes size, status or deletes.
 - Every task has its own ▶ / ⏸. **Start** counts up from 0, **Pause** keeps the total, **Resume** carries on, ✓ **Finish** ends it. Two readings: **actual** (time the clock ran) and **span** (first start to finish, pauses included): 11:00 → 13:00 with three 10-minute pauses is 1h 30m actual, 2h span. Only one runs at a time; starting another pauses the first. The big clock shows the selected task with Reset (undoable) beside it. While a clock runs, the app turns teal.
 - Keyboard: **Space** start/stop the selected task, **N** new task. On a phone, a mini player with Stop sticks to the bottom once you scroll.
