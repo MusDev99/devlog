@@ -21,6 +21,7 @@ Sign in with Google, time each task (actual vs span), sort them on an urgent × 
 | 🔐 Google sign-in (required, self-registration), Users tab in the team's Google Sheet, per-account data on the device | ✅ v2.6 |
 | 📄 Every task in the **Tasks** tab: start, end, pauses, actual vs span; offline changes queue and sync when back | ✅ v2.6 |
 | 🔢 Story points on the Fibonacci scale: 1, 2, 3, 5, 8, 13, 21 | ✅ v2.7 |
+| 🖼️ Google profile photo as your avatar, saved in the Users sheet (`picture_url`) | ✅ v2.7 |
 
 ## 🚀 Quick start
 

@@ -104,7 +104,12 @@ export function createSheets(cfg: SheetsConfig, fetchFn: Fetch = fetch, now: () 
       if (!meta.sheets?.some((s) => s.properties?.title === tab)) {
         await call(':batchUpdate', { method: 'POST', body: JSON.stringify({ requests: [{ addSheet: { properties: { title: tab } } }] }) });
       }
-      if ((await sheets.getValues(`${tab}!A1:A1`)).length === 0) await sheets.batchUpdate([{ range: `${tab}!A1`, values: [headers] }]);
+      // Write the header row if it is empty, or add columns a newer version appended (older cells untouched).
+      const first = (await sheets.getValues(`${tab}!1:1`))[0] ?? [];
+      if (first.length < headers.length && headers.slice(0, first.length).every((h, i) => h === first[i])) {
+        const from = String.fromCharCode(65 + first.length);
+        await sheets.batchUpdate([{ range: `${tab}!${from}1`, values: [headers.slice(first.length)] }]);
+      }
       ready.add(tab);
     },
   };
@@ -113,21 +118,25 @@ export function createSheets(cfg: SheetsConfig, fetchFn: Fetch = fetch, now: () 
 
 /** Users tab: one row per person, keyed by email. */
 export const USERS_TAB = 'Users';
-export const USER_HEADERS = ['email', 'name', 'google_id', 'registered_at', 'last_login_at'];
+export const USER_HEADERS = ['email', 'name', 'google_id', 'registered_at', 'last_login_at', 'picture_url'];
 
-/** First sign-in appends a row (registration); later sign-ins update the name and last login. */
-export async function upsertUser(sheets: Sheets, user: { email: string; name: string; sub: string }, nowIso: string): Promise<'registered' | 'returning'> {
+/** First sign-in appends a row (registration); later sign-ins update the name, last login and profile picture. */
+export async function upsertUser(
+  sheets: Sheets,
+  user: { email: string; name: string; sub: string; picture: string },
+  nowIso: string,
+): Promise<'registered' | 'returning'> {
   await sheets.ensureTab(USERS_TAB, USER_HEADERS);
   const emails = (await sheets.getValues(`${USERS_TAB}!A2:A`)).map((row) => (row[0] ?? '').trim().toLowerCase());
   const index = emails.indexOf(user.email.toLowerCase());
   if (index === -1) {
-    await sheets.append(USERS_TAB, [[user.email, user.name, user.sub, nowIso, nowIso]]);
+    await sheets.append(USERS_TAB, [[user.email, user.name, user.sub, nowIso, nowIso, user.picture]]);
     return 'registered';
   }
   const row = index + 2;
   await sheets.batchUpdate([
     { range: `${USERS_TAB}!B${row}:C${row}`, values: [[user.name, user.sub]] },
-    { range: `${USERS_TAB}!E${row}`, values: [[nowIso]] },
+    { range: `${USERS_TAB}!E${row}:F${row}`, values: [[nowIso, user.picture]] },
   ]);
   return 'returning';
 }

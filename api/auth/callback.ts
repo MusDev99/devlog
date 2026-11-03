@@ -71,11 +71,11 @@ export async function GET(request: Request): Promise<Response> {
     // Record the person. A sheet hiccup must not lock them out: tasks still work and sync later.
     const sheetsCfg = readSheetsConfig(process.env);
     if (sheetsCfg.configured) {
-      await upsertUser(createSheets(sheetsCfg), { email: id.email, name: id.name, sub: id.sub }, new Date(now).toISOString()).catch((error: unknown) =>
+      await upsertUser(createSheets(sheetsCfg), { email: id.email, name: id.name, sub: id.sub, picture: id.picture }, new Date(now).toISOString()).catch((error: unknown) =>
         console.error('Users sheet update failed', error instanceof Error ? error.message : 'unknown'),
       );
     }
-    return done('ok', await createSession(cfg.secret, { email: id.email, name: id.name }, now));
+    return done('ok', await createSession(cfg.secret, { email: id.email, name: id.name, picture: id.picture }, now));
   } catch (error) {
     console.error('Sign-in failed', error instanceof Error ? error.name : 'unknown');
     return done('denied');

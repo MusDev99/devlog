@@ -1,4 +1,4 @@
-import type { User } from './db.ts';
+import { googlePicture, type User } from './db.ts';
 
 /** What the server says about the person on this device. */
 export type SessionState =
@@ -16,7 +16,9 @@ export async function fetchSession(): Promise<SessionState> {
     if (res.status === 401) return { status: 'out' };
     if (!res.ok || !(res.headers.get('content-type') ?? '').includes('application/json')) return { status: 'unavailable' };
     const body = (await res.json()) as Partial<User>;
-    return typeof body.email === 'string' ? { status: 'in', user: { email: body.email, name: typeof body.name === 'string' ? body.name : '' } } : { status: 'unavailable' };
+    return typeof body.email === 'string'
+      ? { status: 'in', user: { email: body.email, name: typeof body.name === 'string' ? body.name : '', picture: googlePicture(body.picture) } }
+      : { status: 'unavailable' };
   } catch {
     return { status: 'offline' };
   }

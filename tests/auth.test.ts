@@ -7,6 +7,7 @@ import {
   isAllowed,
   isSameOrigin,
   pkceChallenge,
+  profilePicture,
   readAuthConfig,
   readOAuthCookie,
   readSession,
@@ -48,7 +49,7 @@ test('allow-list: empty lets any verified account in; set, only those emails (an
   assert.equal(isAllowed(readAuthConfig(env), 'stranger@example.com'), false);
 });
 
-const ME = { email: 'me@example.com', name: 'Me' };
+const ME = { email: 'me@example.com', name: 'Me', picture: 'https://lh3.googleusercontent.com/a/abc=s96-c' };
 
 test('session cookie: round trip, expiry, tampering, wrong secret', async () => {
   const token = await createSession(SECRET, ME, NOW);
@@ -102,10 +103,17 @@ test('id token: accepts a valid Google token and rejects each broken check', asy
     email: 'Me@Example.com',
     email_verified: true,
     name: 'Me Myself',
+    picture: 'https://lh3.googleusercontent.com/a/me=s96-c',
   };
   const expect = { audience: 'client.apps.example', nonce: 'n1', nowMs: NOW };
   const { jwks, token, sign } = await makeIdToken(good);
-  assert.deepEqual(await verifyIdToken(token, jwks, expect), { ok: true, sub: '123', email: 'me@example.com', name: 'Me Myself' });
+  assert.deepEqual(await verifyIdToken(token, jwks, expect), {
+    ok: true,
+    sub: '123',
+    email: 'me@example.com',
+    name: 'Me Myself',
+    picture: 'https://lh3.googleusercontent.com/a/me=s96-c',
+  });
 
   const reason = async (t: string) => {
     const r = await verifyIdToken(t, jwks, expect);
@@ -122,6 +130,15 @@ test('id token: accepts a valid Google token and rejects each broken check', asy
   assert.equal(await reason('not-a-jwt'), 'malformed');
   assert.equal(await reason((await makeIdToken(good, { alg: 'none' })).token), 'alg');
   assert.equal(await reason((await makeIdToken(good, { kid: 'k9' })).token), 'kid');
+});
+
+test('profile picture: only https on Google\'s image host; anything else is dropped', () => {
+  assert.equal(profilePicture('https://lh3.googleusercontent.com/a/x=s96-c'), 'https://lh3.googleusercontent.com/a/x=s96-c');
+  assert.equal(profilePicture('http://lh3.googleusercontent.com/a/x'), '');
+  assert.equal(profilePicture('https://evil.example/pixel.gif'), '');
+  assert.equal(profilePicture('https://googleusercontent.com.evil.example/x'), '');
+  assert.equal(profilePicture('javascript:alert(1)'), '');
+  assert.equal(profilePicture(42), '');
 });
 
 test('cookies and same-origin check', () => {
