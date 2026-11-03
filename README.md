@@ -23,6 +23,7 @@ Sign in with Google, time each task (actual vs span), sort them on an urgent × 
 | 🔢 Story points on the Fibonacci scale: 1, 2, 3, 5, 8, 13, 21 | ✅ v2.7 |
 | 🖼️ Google profile photo as your avatar, saved in the Users sheet (`picture_url`) | ✅ v2.7 |
 | ⚙️ Daily targets per profile, saved in your Users row and following you to every device | ✅ v2.7 |
+| ✨ Animated sign-in page: a looping product story (sorting, timing, points, sync) in CSS, no GIF | ✅ v2.7 |
 
 ## 🚀 Quick start
 

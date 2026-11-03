@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-11-03 21:30
+
+- feat(signin): redesigned sign-in page: headline with gradient, four feature tiles, the official multi-colour Google button with hover lift, drifting colour backdrop and dot grid
+- feat(signin): looping animated product story (tasks land in Unsorted and glide into their quadrants, the stopwatch fills to "1h 30m actual · span 2h", "+3 SP" pops, the week's bars grow, "Synced to Google Sheets"), pure CSS on transform / opacity, no GIF or new host; reduced motion shows the finished scene
+- feat(signin): on phones the showcase is smaller and the button sits right under the pitch, in view without scrolling
+
 ## 2026-11-03 20:30
 
 - feat(settings): daily targets are per profile: saved in your Users row (`target_tasks | target_points | target_minutes`) and loaded at sign-in, so they follow you to every device; cached per account for offline use
