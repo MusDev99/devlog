@@ -1,17 +1,18 @@
 import { useEffect, useRef, useState } from 'preact/hooks';
+import type { User } from '../lib/db.ts';
 import { DEFAULT_TARGETS, formatMinutes, TARGET_LIMITS, type Targets } from '../lib/stats.ts';
 import { Icon } from './Icon.tsx';
 
-type Props = { open: boolean; targets: Targets; onSave: (targets: Targets) => void; onClose: () => void };
+type Props = { open: boolean; user: User | null; onSignOut: () => void; targets: Targets; onSave: (targets: Targets) => void; onClose: () => void };
 
 const FIELDS: { key: keyof Targets; label: string; hint: string; show: (v: number) => string }[] = [
   { key: 'tasks', label: 'Tasks to finish', hint: 'per day', show: (v) => String(v) },
-  { key: 'points', label: 'Story points', hint: 'per day, from finished tasks', show: (v) => `${v} SP` },
-  { key: 'minutes', label: 'Focus time', hint: 'per day, from Start / Stop', show: (v) => formatMinutes(v * 60_000) },
+  { key: 'points', label: 'Story points', hint: 'per day, finished', show: (v) => `${v} SP` },
+  { key: 'minutes', label: 'Focus time', hint: 'per day, timed', show: (v) => formatMinutes(v * 60_000) },
 ];
 
 /** Daily targets. A native modal dialog: focus is trapped, Esc closes, the page behind is inert. */
-export function SettingsDialog({ open, targets, onSave, onClose }: Props) {
+export function SettingsDialog({ open, user, onSignOut, targets, onSave, onClose }: Props) {
   const ref = useRef<HTMLDialogElement>(null);
   const [draft, setDraft] = useState(targets);
 
@@ -48,13 +49,14 @@ export function SettingsDialog({ open, targets, onSave, onClose }: Props) {
       >
         <div class="flex items-center justify-between gap-2">
           <h2 id="settings-title" class="text-lg font-semibold">
-            Daily targets
+            Settings
           </h2>
           <button type="button" onClick={onClose} aria-label="Close" class="press state-layer grid size-11 place-items-center rounded-full text-muted">
             <Icon name="close" class="size-5" />
           </button>
         </div>
-        <p class="mt-1 text-sm text-muted">Stats, rings and streaks measure each day against these.</p>
+        <p class="mt-1 text-sm text-muted">Daily targets: stats, rings and streaks measure each day against these.</p>
+
 
         <ul class="mt-5 grid gap-3">
           {FIELDS.map(({ key, label, hint, show }) => {
@@ -78,6 +80,23 @@ export function SettingsDialog({ open, targets, onSave, onClose }: Props) {
             );
           })}
         </ul>
+
+        <div class="mt-5 flex items-center gap-3 rounded-2xl bg-surface-high px-3.5 py-2.5">
+          {user ? (
+            <>
+              <div class="min-w-0 flex-1">
+                <p class="truncate font-medium">{user.name || user.email}</p>
+                <p class="truncate text-xs text-muted">{user.email} · tasks sync to the team sheet</p>
+              </div>
+              <button type="button" onClick={onSignOut} class="press state-layer inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-full px-3 text-sm font-medium text-error">
+                <Icon name="logout" class="size-[18px]" />
+                Sign out
+              </button>
+            </>
+          ) : (
+            <p class="text-sm text-muted">Local only: sign-in is not set up on this deploy, so nothing syncs.</p>
+          )}
+        </div>
 
         <div class="mt-6 flex items-center justify-between gap-2">
           <button type="button" onClick={() => setDraft(DEFAULT_TARGETS)} class="press state-layer min-h-11 rounded-full px-3 text-sm font-medium text-muted hover:text-fg">

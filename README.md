@@ -1,6 +1,6 @@
 # 🎙️ DevLog
 
-A stopwatch for each task next to an urgent × important (Eisenhower) matrix, with story points and time logged per task, that turns into a ready-to-paste standup each morning. Offline-first PWA, notes stay on your device. Free to run: a static site with no server, no AI and no API keys.
+Sign in with Google, time each task (actual vs span), sort them on an urgent × important (Eisenhower) matrix, and keep a record in your team's Google Sheet. Turns into a ready-to-paste standup each morning. Offline-first PWA, notes stay on your device. Free to run: a static site with no server, no AI and no API keys.
 
 ## ✨ Features
 
@@ -18,6 +18,7 @@ A stopwatch for each task next to an urgent × important (Eisenhower) matrix, wi
 | ⏱️ Stopwatch per task (Start counts up from 0, Stop keeps the total), lean UI: colour by state, one big Start/Stop, live reports, mini player, keyboard shortcuts | ✅ v2.3 |
 | 📊 Stats: daily targets (tasks, story points, focus time), streaks, last 7 days by time / points / tasks, weekly review, time by quadrant and task, insights | ✅ v2.4 |
 | 📲 Mobile-first PWA: bottom tab bar, Install button (iPhone: Add to Home Screen hint), app shortcuts, update prompt, icon badge, persistent storage, fully offline launch | ✅ v2.5 |
+| 🔐 Google sign-in (required, self-registration), Users tab in the team's Google Sheet, per-account data on the device | ✅ v2.6 |
 
 ## 🚀 Quick start
 
@@ -34,9 +35,11 @@ Node 22.18+ (tests run TypeScript directly with `node --test`).
 
 | Path | What |
 |---|---|
-| `src/App.tsx` | Main screen |
+| `src/Root.tsx`, `src/App.tsx` | Sign-in gate, main screen |
 | `src/components/` | `TimerPanel` (stopwatch ring), `SessionTasks` (List / Matrix, Unsorted, drag), `TaskRow` (Start/Stop per task), `Composer` (add row), `Reports` (Standup / Week), `StatsView`, `SettingsDialog` (daily targets), `Icon` |
 | `src/styles.css` | Material Design 3 colour roles as Tailwind `@theme` tokens, `state-layer` utility |
+| `api/auth/*`, `api/_lib/auth.ts` | Google sign-in (OIDC + PKCE), signed session cookie |
+| `api/_lib/sheets.ts` | Google Sheets as a service account (RAW writes), Users tab |
 | `tests/golden/` | Standup golden set (10 note days): the rules keep every blocker and invent nothing |
 | `src/lib/` | Pure logic (`notes.ts` incl. the stopwatch, `matrix.ts`, `stats.ts`, `standup.ts`, `recap.ts`, `today.ts`), `db.ts` (IndexedDB, the only storage module), `speech.ts`, PWA helpers |
 | `public/sw.js`, `public/sw-policy.js` | Service worker and its tested routing rules |
@@ -64,10 +67,23 @@ Node 22.18+ (tests run TypeScript directly with `node --test`).
 
 ## ☁️ Deploy (Vercel)
 
-1. Import the repo in Vercel (framework preset: Vite, it reads `vercel.json`).
-2. Production branch `main`; every PR gets a preview URL.
-3. No environment variables, keys or functions: Vercel serves `dist/` as static files, which fits the free Hobby plan. Any static host works (Netlify, Cloudflare Pages, GitHub Pages); copy the headers from `vercel.json`.
-4. Check the deploy: `npm run smoke -- https://<deploy>` (3 checks, exits 1 on failure).
+1. Import the repo in Vercel (framework preset: Vite, it reads `vercel.json`). Production branch `main`; every PR gets a preview URL. Free Hobby plan is enough.
+2. **Google sign-in**: Google Cloud → APIs & Services → OAuth consent screen, then Credentials → **OAuth client (Web application)** with redirect URI `<APP_URL>/api/auth/callback` (one per deploy URL you sign in on).
+3. **Google Sheet**: enable the **Google Sheets API**; IAM → **Service accounts** → create one → Keys → add a JSON key. Create a spreadsheet and **share it with the service-account email as Editor**. The app creates the **Users** tab and its header row on first sign-in.
+4. Environment variables (Production and Preview), see `.env.example`:
+
+| Variable | Required | What |
+|---|---|---|
+| `AUTH_SECRET` | yes | 32+ random characters (`openssl rand -base64 48`), signs the session cookie |
+| `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | yes | OAuth client from step 2 |
+| `APP_URL` | yes | Public origin, e.g. `https://devlog.vercel.app` (no trailing slash) |
+| `GOOGLE_SERVICE_ACCOUNT_EMAIL` / `GOOGLE_PRIVATE_KEY` | for the sheet | From the JSON key (`client_email`, `private_key`; keep `\n` on one line) |
+| `SHEET_ID` | for the sheet | The id in `docs.google.com/spreadsheets/d/<SHEET_ID>/edit` |
+| `ALLOWED_EMAILS` | no | Comma-separated emails allowed to sign in; empty = anyone with a Google account registers |
+
+Without the sign-in variables `/api/auth/*` return 503 and the app runs local-only (nothing syncs). Without the sheet variables sign-in still works but nothing is written.
+
+5. Check the deploy: `npm run smoke -- https://<deploy>` (3 checks, exits 1 on failure).
 
 ## 🤖 Agent team
 

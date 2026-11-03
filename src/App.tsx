@@ -6,7 +6,7 @@ import { SettingsDialog } from './components/SettingsDialog.tsx';
 import { StatsView } from './components/StatsView.tsx';
 import { PLACE_NAMES } from './components/TaskRow.tsx';
 import { TimerPanel } from './components/TimerPanel.tsx';
-import { allNotes, deleteNote, keepStorage, loadPref, loadTargets, saveNote, savePref, saveTargets } from './lib/db.ts';
+import { allNotes, deleteNote, keepStorage, loadPref, loadTargets, saveNote, savePref, saveTargets, type User } from './lib/db.ts';
 import { isScreen, launchParams, type Screen } from './lib/launch.ts';
 import {
   elapsedMs,
@@ -51,7 +51,8 @@ type Undo = { message: string; before: Note };
 const isTyping = (target: EventTarget | null) =>
   target instanceof HTMLElement && (target.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName));
 
-export function App() {
+/** `user` is null when the app runs local-only (no sign-in server). */
+export function App({ user, onSignOut }: { user: User | null; onSignOut: () => void }) {
   const online = useOnline();
   const now = new Date();
   const today = dayKey(now, timeZone);
@@ -253,11 +254,17 @@ export function App() {
             <button
               type="button"
               onClick={() => setSettingsOpen(true)}
-              aria-label="Settings: daily targets"
-              title="Daily targets"
+              aria-label={user ? `Account and settings: ${user.email}` : 'Settings: daily targets'}
+              title={user ? user.email : 'Daily targets'}
               class="press state-layer grid size-11 place-items-center rounded-full bg-surface-high text-muted hover:text-fg"
             >
-              <Icon name="settings" class="size-5" />
+              {user ? (
+                <span aria-hidden="true" class="grid size-8 place-items-center rounded-full bg-accent text-sm font-bold text-on-accent uppercase">
+                  {(user.name || user.email).trim().charAt(0)}
+                </span>
+              ) : (
+                <Icon name="settings" class="size-5" />
+              )}
             </button>
           </div>
 
@@ -371,6 +378,8 @@ export function App() {
 
       <SettingsDialog
         open={settingsOpen}
+        user={user}
+        onSignOut={onSignOut}
         targets={targets}
         onClose={() => setSettingsOpen(false)}
         onSave={(next) => {
