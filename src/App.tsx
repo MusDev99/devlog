@@ -9,6 +9,7 @@ import { SyncChip } from './components/SyncChip.tsx';
 import { PLACE_NAMES } from './components/TaskRow.tsx';
 import { TimerPanel } from './components/TimerPanel.tsx';
 import { allNotes, deleteNote, keepStorage, loadPref, loadTargets, saveNote, savePref, saveTargets, targetsPending, type User } from './lib/db.ts';
+import { buzz, HAPTICS_KEY, parseHaptics, setHaptics } from './lib/haptics.ts';
 import { isScreen, launchParams, type Screen } from './lib/launch.ts';
 import { plainText } from './lib/links.ts';
 import {
@@ -72,6 +73,7 @@ export function App({ user, onSignOut }: { user: User | null; onSignOut: () => v
   const [screen, setScreenState] = useState<Screen>(savedScreen);
   const [targets, setTargets] = useState(loadTargets);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [haptics, setHapticsState] = useState(() => parseHaptics(loadPref(HAPTICS_KEY)));
 
   /**
    * Per-profile targets live in the Users sheet and follow the person. On sign-in (and back online):
@@ -180,7 +182,7 @@ export function App({ user, onSignOut }: { user: User | null; onSignOut: () => v
   /** Start, pause or resume a task's stopwatch. Starting one pauses any other (one at a time) and selects it. */
   function toggleTimer(note: Note) {
     const at = new Date();
-    navigator.vibrate?.(12);
+    buzz(note.startedAt ? 'stop' : 'start');
     if (note.startedAt) return void save([stopTimer(note, at)]);
     select(note.id);
     setNowMs(at.getTime());
@@ -188,6 +190,14 @@ export function App({ user, onSignOut }: { user: User | null; onSignOut: () => v
   }
 
   const toggle = () => selected && toggleTimer(selected);
+
+  /** Vibration on / off for this device. Turning it on gives one sample buzz, so the person feels what they chose. */
+  function changeHaptics(on: boolean) {
+    setHaptics(on);
+    setHapticsState(on);
+    savePref(HAPTICS_KEY, on ? 'on' : 'off');
+    if (on) buzz('start');
+  }
 
   // Opened from a shortcut: clean the URL; "Add a task" puts the cursor in the field.
   useEffect(() => {
@@ -219,6 +229,7 @@ export function App({ user, onSignOut }: { user: User | null; onSignOut: () => v
   });
 
   async function add(draft: Draft, size: Size, focus: boolean) {
+    if (focus && draft.tag !== 'done') buzz('start'); // before any await, while the tap still counts as user activation
     const at = new Date();
     const note: Note = { id: crypto.randomUUID(), ...draft, quadrant: 'unsorted', size, createdAt: at.toISOString(), day: dayKey(at, timeZone) };
     await saveNote(note);
@@ -232,6 +243,9 @@ export function App({ user, onSignOut }: { user: User | null; onSignOut: () => v
   }
 
   const setStatus = (note: Note, tag: Tag) => {
+    // Finishing buzzes the rising triple; any other status change that stops a running clock buzzes the stop taps.
+    if (tag === 'done') buzz('finish');
+    else if (note.startedAt && tag !== 'doing') buzz('stop');
     const at = new Date();
     const message =
       tag === 'done' ? 'Marked done' : note.tag === 'done' ? `Restored to ${PLACE_NAMES[placeOf(note)]}` : `Status: ${TAG_LABELS[tag]}`;
@@ -429,6 +443,8 @@ export function App({ user, onSignOut }: { user: User | null; onSignOut: () => v
         user={user}
         onSignOut={onSignOut}
         targets={targets}
+        haptics={haptics}
+        onHaptics={changeHaptics}
         onClose={() => setSettingsOpen(false)}
         onSave={(next) => void saveSettings(next)}
       />

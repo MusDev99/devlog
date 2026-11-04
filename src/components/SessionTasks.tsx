@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'preact/hooks';
 import { loadPref, savePref } from '../lib/db.ts';
+import { buzz } from '../lib/haptics.ts';
 import { plainText } from '../lib/links.ts';
 import { doneBucket, listView, places, progressCount } from '../lib/matrix.ts';
 import { PLACES, placeOf, QUADRANT_LABELS, type Draft, type Note, type Place, type Size } from '../lib/notes.ts';
@@ -55,7 +56,7 @@ export function SessionTasks({ tasks, today, nowMs, focusId, onAdd, ...actions }
     const d = { note: p.note, x, y, over: placeAt(x, y) };
     dragRef.current = d;
     setDrag(d);
-    if (p.touch) navigator.vibrate?.(10);
+    if (p.touch) buzz('grab');
   };
   const clearPending = () => {
     if (pending.current?.timer) clearTimeout(pending.current.timer);
