@@ -1,9 +1,9 @@
 import type { Plugin } from 'vite';
 
-/** Hashed build files the service worker precaches so the app boots offline. */
+/** Hashed build files the service worker precaches so the app boots offline (and the finish sound plays offline). */
 export function precacheList(fileNames: string[]): string[] {
   return fileNames
-    .filter((name) => name.startsWith('assets/') && /\.(js|css|woff2)$/.test(name))
+    .filter((name) => name.startsWith('assets/') && /\.(js|css|woff2|mp3)$/.test(name))
     .map((name) => `/${name}`)
     .sort();
 }

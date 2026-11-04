@@ -3,10 +3,11 @@ import { existsSync, readFileSync } from 'node:fs';
 import { test } from 'node:test';
 import { precacheList } from '../build/sw-assets.ts';
 
-test('only hashed JS, CSS and fonts are precached', () => {
-  assert.deepEqual(precacheList(['index.html', 'assets/index-a1.js', 'assets/index-b2.css', 'assets/logo.png', 'sw.js']), [
+test('only hashed JS, CSS, fonts and the finish sound are precached', () => {
+  assert.deepEqual(precacheList(['index.html', 'assets/index-a1.js', 'assets/index-b2.css', 'assets/logo.png', 'assets/yay-c3.mp3', 'sw.js']), [
     '/assets/index-a1.js',
     '/assets/index-b2.css',
+    '/assets/yay-c3.mp3',
   ]);
 });
 
