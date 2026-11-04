@@ -1,11 +1,21 @@
 import { useEffect, useRef, useState } from 'preact/hooks';
 import type { User } from '../lib/db.ts';
+import { canVibrate } from '../lib/haptics.ts';
 import { formatMinutes } from '../lib/stats.ts';
 import { DEFAULT_TARGETS, TARGET_LIMITS, type Targets } from '../lib/targets.ts';
 import { Avatar } from './Avatar.tsx';
 import { Icon } from './Icon.tsx';
 
-type Props = { open: boolean; user: User | null; onSignOut: () => void; targets: Targets; onSave: (targets: Targets) => void; onClose: () => void };
+type Props = {
+  open: boolean;
+  user: User | null;
+  onSignOut: () => void;
+  targets: Targets;
+  haptics: boolean;
+  onHaptics: (on: boolean) => void;
+  onSave: (targets: Targets) => void;
+  onClose: () => void;
+};
 
 const FIELDS: { key: keyof Targets; label: string; hint: string; show: (v: number) => string }[] = [
   { key: 'tasks', label: 'Tasks to finish', hint: 'per day', show: (v) => String(v) },
@@ -14,7 +24,7 @@ const FIELDS: { key: keyof Targets; label: string; hint: string; show: (v: numbe
 ];
 
 /** Daily targets. A native modal dialog: focus is trapped, Esc closes, the page behind is inert. */
-export function SettingsDialog({ open, user, onSignOut, targets, onSave, onClose }: Props) {
+export function SettingsDialog({ open, user, onSignOut, targets, haptics, onHaptics, onSave, onClose }: Props) {
   const ref = useRef<HTMLDialogElement>(null);
   const [draft, setDraft] = useState(targets);
 
@@ -85,6 +95,26 @@ export function SettingsDialog({ open, user, onSignOut, targets, onSave, onClose
             );
           })}
         </ul>
+
+        {/* Per device, applies at once (not part of Save). Hidden where the browser cannot vibrate (iPhone / iPad). */}
+        {canVibrate() && (
+          <div class="mt-3 flex items-center gap-3 rounded-2xl bg-surface-high px-3.5 py-2.5">
+            <div class="min-w-0 flex-1">
+              <p class="font-medium">Vibration</p>
+              <p class="text-xs text-muted">A buzz on Start, Stop and Finish, on this device</p>
+            </div>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={haptics}
+              aria-label="Vibration"
+              onClick={() => onHaptics(!haptics)}
+              class={`press relative h-8 w-14 shrink-0 rounded-full transition-colors ${haptics ? 'bg-accent' : 'bg-surface-highest'}`}
+            >
+              <span class={`absolute top-1 left-1 size-6 rounded-full bg-on-accent shadow transition-transform duration-200 ${haptics ? 'translate-x-6' : ''}`} />
+            </button>
+          </div>
+        )}
 
         <div class="mt-5 flex items-center gap-3 rounded-2xl bg-surface-high px-3.5 py-2.5">
           {user ? (

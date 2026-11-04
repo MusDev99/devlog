@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-11-04 15:10
+
+- feat(haptics): **vibration on Start, Stop and Finish** (Vibration API). Each feels different: Start = one firm 30 ms buzz, Stop / Pause = two light taps, Finish = a rising triple. Works from the big timer, a row's Start / Stop, the Space key, the composer's ▶ (add and start), Finish, dropping a task on Done, and any status change that stops a running clock. The faint lift tick when dragging a task uses the same module
+- feat(settings): **Vibration** switch in Settings, per device and applied at once (turning it on gives a sample buzz); hidden on browsers that cannot vibrate (iPhone / iPad Safari)
+- change: the old single 12 ms tick (barely felt on most phones, Start / Pause only) is replaced; `src/lib/haptics.ts` with unit tests
+
 ## 2026-11-04 00:30
 
 - feat(stats): **Last 12 weeks** calendar heatmap of focus time; tap a day (or use the arrows) to see the tasks worked on and finished that day, with time, quadrant and points
