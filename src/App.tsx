@@ -29,6 +29,8 @@ import {
 } from './lib/notes.ts';
 import { fetchRemoteTargets, pushTargets, sameTargets } from './lib/profile-settings.ts';
 import { setBadge, useInstall, useOnline, useUpdate } from './lib/pwa.ts';
+import { parseSound, SOUND_KEY } from './lib/sound.ts';
+import { playFinish, playToggle, setSounds } from './lib/sounds.ts';
 import type { Targets } from './lib/targets.ts';
 import { useSync } from './lib/use-sync.ts';
 import { dayKey, dayLabel, greeting } from './lib/today.ts';
@@ -74,6 +76,7 @@ export function App({ user, onSignOut }: { user: User | null; onSignOut: () => v
   const [targets, setTargets] = useState(loadTargets);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [haptics, setHapticsState] = useState(() => parseHaptics(loadPref(HAPTICS_KEY)));
+  const [sound, setSoundState] = useState(() => parseSound(loadPref(SOUND_KEY)));
 
   /**
    * Per-profile targets live in the Users sheet and follow the person. On sign-in (and back online):
@@ -183,6 +186,7 @@ export function App({ user, onSignOut }: { user: User | null; onSignOut: () => v
   function toggleTimer(note: Note) {
     const at = new Date();
     buzz(note.startedAt ? 'stop' : 'start');
+    playToggle(); // the same chime for start, resume and pause
     if (note.startedAt) return void save([stopTimer(note, at)]);
     select(note.id);
     setNowMs(at.getTime());
@@ -197,6 +201,14 @@ export function App({ user, onSignOut }: { user: User | null; onSignOut: () => v
     setHapticsState(on);
     savePref(HAPTICS_KEY, on ? 'on' : 'off');
     if (on) buzz('start');
+  }
+
+  /** Sounds on / off for this device. Turning them on plays the chime once, inside the tap, so the person hears their choice. */
+  function changeSound(on: boolean) {
+    setSounds(on);
+    setSoundState(on);
+    savePref(SOUND_KEY, on ? 'on' : 'off');
+    if (on) playToggle();
   }
 
   // Opened from a shortcut: clean the URL; "Add a task" puts the cursor in the field.
@@ -229,7 +241,11 @@ export function App({ user, onSignOut }: { user: User | null; onSignOut: () => v
   });
 
   async function add(draft: Draft, size: Size, focus: boolean) {
-    if (focus && draft.tag !== 'done') buzz('start'); // before any await, while the tap still counts as user activation
+    if (focus && draft.tag !== 'done') {
+      // before any await, while the tap still counts as user activation
+      buzz('start');
+      playToggle();
+    }
     const at = new Date();
     const note: Note = { id: crypto.randomUUID(), ...draft, quadrant: 'unsorted', size, createdAt: at.toISOString(), day: dayKey(at, timeZone) };
     await saveNote(note);
@@ -244,8 +260,14 @@ export function App({ user, onSignOut }: { user: User | null; onSignOut: () => v
 
   const setStatus = (note: Note, tag: Tag) => {
     // Finishing buzzes the rising triple; any other status change that stops a running clock buzzes the stop taps.
-    if (tag === 'done') buzz('finish');
-    else if (note.startedAt && tag !== 'doing') buzz('stop');
+    // Straight from the tap, before any await: browsers only unlock vibration and audio inside a gesture.
+    if (tag === 'done') {
+      buzz('finish');
+      playFinish();
+    } else if (note.startedAt && tag !== 'doing') {
+      buzz('stop');
+      playToggle();
+    }
     const at = new Date();
     const message =
       tag === 'done' ? 'Marked done' : note.tag === 'done' ? `Restored to ${PLACE_NAMES[placeOf(note)]}` : `Status: ${TAG_LABELS[tag]}`;
@@ -445,6 +467,8 @@ export function App({ user, onSignOut }: { user: User | null; onSignOut: () => v
         targets={targets}
         haptics={haptics}
         onHaptics={changeHaptics}
+        sound={sound}
+        onSound={changeSound}
         onClose={() => setSettingsOpen(false)}
         onSave={(next) => void saveSettings(next)}
       />

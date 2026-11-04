@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-11-04 18:34
+
+- feat(sound): **a cheer when you finish a task** and **a seatbelt chime when you start, resume or pause one**. Finish covers the Finish button, a row's check, dropping on Done; the chime covers the timer, a row's Start / Stop, the Space key, the composer's ▶ and any status change that stops a running clock
+- feat(settings): **Sounds** switch (per device, applies at once, plays the chime when turned on); the Vibration switch sits beside it
+- Sounds are decoded once with Web Audio and played from memory, so they answer the tap at once; the files are hashed into `/assets` and **precached**, so they play offline. `src/lib/sound.ts` (player, injected audio, tested) and `src/lib/sounds.ts` (the two files); the service worker precache list now includes `.mp3`
+- The seatbelt file was converted from a 197 KB stereo WAV to a 14 KB mono MP3 (same 1.1 s)
+
 ## 2026-11-04 15:10
 
 - feat(haptics): **vibration on Start, Stop and Finish** (Vibration API). Each feels different: Start = one firm 30 ms buzz, Stop / Pause = two light taps, Finish = a rising triple. Works from the big timer, a row's Start / Stop, the Space key, the composer's ▶ (add and start), Finish, dropping a task on Done, and any status change that stops a running clock. The faint lift tick when dragging a task uses the same module
