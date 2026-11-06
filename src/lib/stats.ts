@@ -186,6 +186,10 @@ export function insights(notes: Note[], nowMs: number, timeZone: string, today: 
   const [peak] = [...byHour.entries()].sort((x, y) => y[1] - x[1]);
   if (peak && b.totalMs >= 60 * 60_000) out.push({ tone: 'info', text: `You focus most around ${String(peak[0]).padStart(2, '0')}:00. Put hard tasks there.` });
 
+  // Work in progress: a pile in Doing means little is finishing.
+  const doing = notes.filter((n) => n.tag === 'doing').length;
+  if (doing >= 3) out.unshift({ tone: 'warn', text: `${doing} tasks are in Doing. Finish one before starting another: fewer open tasks finish sooner.` });
+
   const blocked = notes.filter((n) => n.tag === 'blocker').length;
   if (blocked > 0) out.push({ tone: 'warn', text: `${blocked} ${blocked === 1 ? 'task is' : 'tasks are'} blocked. Unblocking one may free more than starting new work.` });
 

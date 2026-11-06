@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-11-06 21:00
+
+- feat(stats): **Time by ticket or repo** (last 7 days): tracked time grouped by the first link in each task, a Jira ticket (`SKYIQ-10143`) or a GitHub repo (PRs and issues of one repo add up), largest first, with tasks, done count, points and the share of time that has a link; the label opens the ticket. `sourceOf` in `src/lib/links.ts`, `streams` in `src/lib/work.ts`
+- feat(stats): **Sizing check** (last 4 weeks): average time of finished, timed tasks per story-point size, and a plain verdict: bigger sizes take longer (points track effort), or "an 8 SP task took less time than a 5 SP one: re-size after finishing". `sizing` in `src/lib/work.ts`
+- feat(insights): **work-in-progress warning** when three or more tasks are in Doing ("finish one before starting another"), shown first
+- fix(stats): the "By task" list could push the Stats page wider than a 375 px screen when a task title was long (a grid column sized to its text); it now uses `minmax(0, 1fr)` like the other lists
+- Already covered by Stats, so not repeated: planned (Schedule) versus reactive (Do now) share of time, and pace per story point per task ("Where your time went"). Spec: `docs/features/dev-metrics/feature.md`
+
 ## 2026-11-06 19:00
 
 - feat(tasks): **one bottom sheet for a task's actions** (`RowSheet.tsx`, a native modal dialog: focus trapped, Esc closes, tap outside closes) replaces the menu that expanded inside each row and pushed the list down. Move to, Story points (stays open so you see the change), Status, Delete. Opens from the ⋯ button or a left swipe

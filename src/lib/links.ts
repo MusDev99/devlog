@@ -67,3 +67,18 @@ export function plainText(text: string): string {
     .replace(/\s+/g, ' ')
     .trim();
 }
+
+/** Where a task's work lives: its first link, grouped the way a developer thinks (a Jira ticket, a GitHub repo, else a site). */
+export type Source = { kind: 'jira' | 'github' | 'other'; key: string; label: string; href: string };
+
+export function sourceOf(text: string): Source | null {
+  const first = splitLinks(text).find((p) => p.kind === 'link');
+  if (!first || first.kind !== 'link') return null;
+  const url = new URL(first.href);
+  const jira = url.pathname.match(/\/browse\/([A-Z][A-Z0-9_]*-\d+)/) ?? url.searchParams.get('selectedIssue')?.match(/^([A-Z][A-Z0-9_]*-\d+)$/);
+  if (jira?.[1]) return { kind: 'jira', key: `jira:${jira[1]}`, label: jira[1], href: first.href };
+  const gh = url.hostname === 'github.com' && url.pathname.match(/^\/([^/]+)\/([^/]+)/);
+  if (gh) return { kind: 'github', key: `github:${gh[1]}/${gh[2]}`.toLowerCase(), label: `${gh[1]}/${gh[2]}`, href: `https://github.com/${gh[1]}/${gh[2]}` };
+  const host = url.hostname.replace(/^www\./, '');
+  return { kind: 'other', key: `other:${host}`, label: host, href: `${url.protocol}//${url.host}` };
+}
