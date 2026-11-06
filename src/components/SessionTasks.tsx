@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'preact/hooks';
+import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { loadPref, savePref } from '../lib/db.ts';
 import { buzz } from '../lib/haptics.ts';
 import { plainText } from '../lib/links.ts';
@@ -7,12 +7,12 @@ import { PLACES, placeOf, QUADRANT_LABELS, type Draft, type Note, type Place, ty
 import { Composer } from './Composer.tsx';
 import { DoneBucket } from './DoneBucket.tsx';
 import { Icon } from './Icon.tsx';
+import { useStable } from '../lib/use-clock.ts';
 import { PLACE_TONE, TaskRow, type RowActions } from './TaskRow.tsx';
 
 type Props = RowActions & {
   tasks: Note[];
   today: string;
-  nowMs: number;
   focusId: string | null;
   onAdd: (draft: Draft, size: Size, focus: boolean) => Promise<void>;
 };
@@ -32,6 +32,9 @@ function placeAt(x: number, y: number): Target | null {
   return value === 'done' || PLACES.includes(value as Place) ? (value as Target) : null;
 }
 
+/** The drag ghost is centred on the pointer and tilted; moving it is a transform only (no layout). */
+const ghostAt = (x: number, y: number) => `translate3d(${x}px, ${y}px, 0) translate(-50%, -50%) rotate(2deg)`;
+
 const savedView = (): View => (loadPref(VIEW_KEY) === 'list' ? 'list' : 'matrix');
 
 /**
@@ -39,23 +42,40 @@ const savedView = (): View => (loadPref(VIEW_KEY) === 'list' ? 'list' : 'matrix'
  * Drag a row with the mouse, or long-press then drag on touch (a plain swipe still scrolls);
  * the row menu moves it without dragging.
  */
-export function SessionTasks({ tasks, today, nowMs, focusId, onAdd, ...actions }: Props) {
+export function SessionTasks({ tasks, today, focusId, onAdd, ...actions }: Props) {
   const [view, setView] = useState<View>(savedView);
   const [drag, setDrag] = useState<Drag | null>(null);
   const dragRef = useRef<Drag | null>(null);
   const pending = useRef<Pending | null>(null);
   const suppressClick = useRef(false);
-  // Listeners bind once; the latest handler is read at drop time.
-  const onPlace = useRef(actions.onPlace);
-  onPlace.current = actions.onPlace;
-  const onFinish = useRef((note: Note) => actions.onStatus(note, 'done'));
-  onFinish.current = (note: Note) => actions.onStatus(note, 'done');
-  const { done, total } = progressCount(tasks, today);
+  const ghost = useRef<HTMLDivElement>(null);
+  const frame = useRef<number | null>(null);
+  // Listeners bind once and read the latest handlers here; rows get one stable bundle so memoised rows are not re-rendered.
+  const act = useRef(actions);
+  act.current = actions;
+  const rowActions = useMemo<RowActions>(
+    () => ({
+      onSelect: (note) => !suppressClick.current && act.current.onSelect(note),
+      onTimer: (note) => act.current.onTimer(note),
+      onStatus: (note, tag) => act.current.onStatus(note, tag),
+      onPlace: (note, place) => act.current.onPlace(note, place),
+      onSize: (note, size) => act.current.onSize(note, size),
+      onDelete: (note) => act.current.onDelete(note),
+    }),
+    [],
+  );
+  // A non-passive touchmove blocks the browser's scrolling, so it is armed only for a touch that starts on a row.
+  const guard = useRef((e: TouchEvent) => {
+    if (dragRef.current) e.preventDefault();
+  });
+  const arm = () => window.addEventListener('touchmove', guard.current, { passive: false });
+  const disarm = () => window.removeEventListener('touchmove', guard.current);
+  const { done, total } = useMemo(() => progressCount(tasks, today), [tasks, today]);
 
   const begin = (p: Pending, x: number, y: number) => {
     const d = { note: p.note, x, y, over: placeAt(x, y) };
     dragRef.current = d;
-    setDrag(d);
+    setDrag({ ...d });
     if (p.touch) buzz('grab');
   };
   const clearPending = () => {
@@ -64,14 +84,26 @@ export function SessionTasks({ tasks, today, nowMs, focusId, onAdd, ...actions }
   };
 
   useEffect(() => {
+    /** Follow the pointer without re-rendering: the ghost moves by transform, the drop target is read once a frame. */
+    const settle = () => {
+      frame.current = null;
+      const d = dragRef.current;
+      if (!d) return;
+      if (d.y < 72) window.scrollBy(0, -12);
+      else if (d.y > window.innerHeight - 72) window.scrollBy(0, 12);
+      const over = placeAt(d.x, d.y);
+      if (over !== d.over) {
+        d.over = over;
+        setDrag({ ...d });
+      }
+    };
     const move = (e: PointerEvent) => {
       const d = dragRef.current;
       if (d) {
-        if (e.clientY < 72) window.scrollBy(0, -12);
-        else if (e.clientY > window.innerHeight - 72) window.scrollBy(0, 12);
-        const next = { ...d, x: e.clientX, y: e.clientY, over: placeAt(e.clientX, e.clientY) };
-        dragRef.current = next;
-        setDrag(next);
+        d.x = e.clientX;
+        d.y = e.clientY;
+        if (ghost.current) ghost.current.style.transform = ghostAt(d.x, d.y);
+        frame.current ??= requestAnimationFrame(settle);
         return;
       }
       const p = pending.current;
@@ -82,54 +114,61 @@ export function SessionTasks({ tasks, today, nowMs, focusId, onAdd, ...actions }
         begin(p, e.clientX, e.clientY);
       } else if (p.touch && moved > 8) {
         clearPending(); // a swipe: let the page scroll
+        disarm();
       }
     };
     const up = (e: PointerEvent) => {
       clearPending();
+      disarm();
       const d = dragRef.current;
       if (!d) return;
-      dragRef.current = null;
-      setDrag(null);
+      stop();
       suppressClick.current = true;
       setTimeout(() => (suppressClick.current = false), 0);
       const over = placeAt(e.clientX, e.clientY);
-      if (over === 'done') onFinish.current(d.note);
-      else if (over && over !== placeOf(d.note)) onPlace.current(d.note, over);
+      if (over === 'done') act.current.onStatus(d.note, 'done');
+      else if (over && over !== placeOf(d.note)) act.current.onPlace(d.note, over);
     };
-    const cancel = () => {
-      clearPending();
+    const stop = () => {
+      if (frame.current !== null) cancelAnimationFrame(frame.current);
+      frame.current = null;
       dragRef.current = null;
       setDrag(null);
     };
-    // Once a touch drag has begun, stop the page from scrolling under it.
-    const touchMove = (e: TouchEvent) => dragRef.current && e.preventDefault();
+    const cancel = () => {
+      clearPending();
+      disarm();
+      stop();
+    };
     const key = (e: KeyboardEvent) => e.key === 'Escape' && cancel();
     window.addEventListener('pointermove', move);
     window.addEventListener('pointerup', up);
     window.addEventListener('pointercancel', cancel);
-    window.addEventListener('touchmove', touchMove, { passive: false });
     window.addEventListener('keydown', key);
     return () => {
       window.removeEventListener('pointermove', move);
       window.removeEventListener('pointerup', up);
       window.removeEventListener('pointercancel', cancel);
-      window.removeEventListener('touchmove', touchMove);
       window.removeEventListener('keydown', key);
+      disarm();
+      if (frame.current !== null) cancelAnimationFrame(frame.current);
     };
   }, []);
 
-  function rowPointerDown(note: Note, e: PointerEvent) {
+  const rowPointerDown = useStable((note: Note, e: PointerEvent) => {
     if (e.button !== 0 || view !== 'matrix') return;
     // The done toggle and the menu stay plain buttons.
     if ((e.target as Element).closest('button:not([data-row-main]), select, input, a')) return;
     const p: Pending = { note, x: e.clientX, y: e.clientY, touch: e.pointerType !== 'mouse' };
-    if (p.touch) p.timer = setTimeout(() => pending.current === p && (clearPending(), begin(p, p.x, p.y)), LONG_PRESS_MS);
+    if (p.touch) {
+      arm();
+      p.timer = setTimeout(() => pending.current === p && (clearPending(), begin(p, p.x, p.y)), LONG_PRESS_MS);
+    }
     pending.current = p;
-  }
+  });
 
-  const rowActions: RowActions = { ...actions, onSelect: (note) => !suppressClick.current && actions.onSelect(note) };
   const row = (note: Note, showPlace = false) => (
-    <TaskRow key={note.id} note={note} nowMs={nowMs} focused={note.id === focusId} showPlace={showPlace} onPointerDown={rowPointerDown} {...rowActions} />
+    <TaskRow key={note.id} note={note} focused={note.id === focusId} showPlace={showPlace} onPointerDown={rowPointerDown} {...rowActions} />
   );
   // Drop zones light up in their own colour while a task hovers them.
   const ring = (place: Place) =>
@@ -140,10 +179,10 @@ export function SessionTasks({ tasks, today, nowMs, focusId, onAdd, ...actions }
     savePref(VIEW_KEY, v);
   };
 
-  const views = places(tasks);
+  const views = useMemo(() => places(tasks), [tasks]);
   const unsorted = views[0];
-  const list = view === 'list' ? listView(tasks) : null;
-  const finished = doneBucket(tasks, today);
+  const list = useMemo(() => (view === 'list' ? listView(tasks) : null), [tasks, view]);
+  const finished = useMemo(() => doneBucket(tasks, today), [tasks, today]);
 
   return (
     <section aria-labelledby="tasks-title" class={drag ? 'select-none' : ''}>
@@ -249,18 +288,19 @@ export function SessionTasks({ tasks, today, nowMs, focusId, onAdd, ...actions }
         recent={finished.recent}
         earlier={finished.earlier}
         today={today}
-        nowMs={nowMs}
+        nowMs={Date.now()}
         dropRing={doneRing}
         dragging={drag !== null}
         onRestore={(note) => actions.onStatus(note, 'todo')}
-        onDelete={actions.onDelete}
+        onDelete={rowActions.onDelete}
       />
 
       {drag && (
         <div
+          ref={ghost}
           aria-hidden="true"
-          style={{ left: `${drag.x}px`, top: `${drag.y}px` }}
-          class="pointer-events-none fixed z-50 max-w-64 -translate-x-1/2 -translate-y-1/2 rotate-2 truncate rounded-xl bg-surface-highest px-4 py-3 text-sm font-medium shadow-2xl ring-2 ring-accent"
+          style={{ transform: ghostAt(dragRef.current?.x ?? drag.x, dragRef.current?.y ?? drag.y) }}
+          class="pointer-events-none fixed top-0 left-0 z-50 max-w-64 truncate rounded-xl bg-surface-highest px-4 py-3 text-sm font-medium shadow-2xl ring-2 ring-accent will-change-transform"
         >
           {plainText(drag.note.text)}
         </div>

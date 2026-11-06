@@ -1,7 +1,9 @@
+import { memo } from 'preact/compat';
 import { useState } from 'preact/hooks';
 import { elapsedMs, formatClock, formatDuration, PLACES, placeOf, QUADRANT_LABELS, SIZES, sizeOf, TAG_LABELS, type Note, type Place, type Size, type Tag } from '../lib/notes.ts';
 import { linksIn, titleText } from '../lib/links.ts';
 import { taskTiming } from '../lib/timing.ts';
+import { useClock } from '../lib/use-clock.ts';
 import { Icon } from './Icon.tsx';
 
 export type RowActions = {
@@ -16,7 +18,6 @@ export type RowActions = {
 
 type Props = RowActions & {
   note: Note;
-  nowMs: number;
   focused: boolean;
   /** List view shows where the task sits. */
   showPlace?: boolean;
@@ -46,18 +47,22 @@ const STATUS_TONE: Partial<Record<Tag, string>> = { doing: 'bg-warn/15 text-warn
 const REVEAL = '[@media(hover:hover)]:opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity';
 
 /** Compact task row: tick, the task (tap to select, drag to move), its own Start/Stop, and a menu for the rest. */
-export function TaskRow({ note, nowMs, focused, showPlace, onPointerDown, onSelect, onTimer, onStatus, onPlace, onSize, onDelete }: Props) {
+function TaskRowView({ note, focused, showPlace, onPointerDown, onSelect, onTimer, onStatus, onPlace, onSize, onDelete }: Props) {
   const [open, setOpen] = useState(false);
   const done = note.tag === 'done';
   const size = sizeOf(note);
   const place = placeOf(note);
   const running = Boolean(note.startedAt);
+  // Only a running row subscribes to the clock; every other row is untouched by a tick.
+  const nowMs = useClock(running);
   const title = titleText(note.text);
   const links = linksIn(note.text);
   const spent = elapsedMs(note, nowMs);
   const logged = spent < 60_000 ? `${Math.floor(spent / 1000)}s` : formatDuration(spent, false);
   const timing = done ? taskTiming(note, nowMs) : null;
   const span = timing?.start && timing.pausedMs >= 60_000 ? formatDuration(timing.spanMs, false) : null;
+  // Only a task just added slides in; rows that re-mount (tab switch, move) appear calmly.
+  const fresh = Date.now() - Date.parse(note.createdAt) < 1500;
   const chipBase = 'press state-layer inline-flex min-h-11 items-center gap-1.5 rounded-xl px-3 text-sm font-medium';
   const chip = `${chipBase} bg-surface-highest/60`;
 
@@ -65,7 +70,9 @@ export function TaskRow({ note, nowMs, focused, showPlace, onPointerDown, onSele
     <li
       onPointerDown={onPointerDown && ((e) => onPointerDown(note, e))}
       onContextMenu={onPointerDown && ((e) => e.preventDefault())}
-      class={`group animate-rise rounded-xl transition-colors select-none [-webkit-touch-callout:none] ${
+      class={`group rounded-xl transition-colors select-none [-webkit-touch-callout:none] [contain-intrinsic-size:auto_56px] [content-visibility:auto] ${
+        fresh ? 'animate-rise' : ''
+      } ${
         focused ? 'bg-accent/10 shadow-[inset_3px_0_0_var(--color-accent)]' : 'bg-surface-high/80 hover:bg-surface-highest/80'
       }`}
     >
@@ -222,3 +229,6 @@ export function TaskRow({ note, nowMs, focused, showPlace, onPointerDown, onSele
     </li>
   );
 }
+
+/** Memoised: a row re-renders only when its own task, focus or place label changes (handlers are stable). */
+export const TaskRow = memo(TaskRowView);

@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-11-06 12:00
+
+- perf(render): **a tick no longer re-renders the app.** The one-second clock moved out of `App` into a shared ticker (`src/lib/clock.ts`, pure and tested; `useClock` in `src/lib/use-clock.ts`). Only the running row, the stopwatch, the mini player, the tab title and (on Stats) the stats subscribe, so with 100 tasks a tick touches one row instead of the whole tree
+- perf(render): task rows are memoised and get one stable bundle of handlers; the Tasks and Reports parts are mounted only for the open screen on a phone (wide screens keep both); standup, recap and stats are memoised
+- perf(drag): the drag ghost moves by `transform` (no re-render per pointer move), the drop target is read once a frame, and the non-passive `touchmove` guard is armed only for a touch that starts on a row, so ordinary scrolling is no longer held up by it
+- perf(paint): rows skip rendering while off screen (`content-visibility`), only a just-added row animates in, and the tab bar, mini player and timer card use a solid surface on touch devices instead of `backdrop-blur`
+- measured at 375px, 100 tasks, 4x CPU throttle (`scripts/perf.cjs`): idle tick 390 -> ~135 ms per 5 s, drag 48 -> 14 ms per move, tap to paint 35-81 -> 20-45 ms. Plan: `docs/features/perf-render/feature.md`
+
 ## 2026-11-04 18:34
 
 - feat(sound): **a cheer when you finish a task** and **a seatbelt chime when you start, resume or pause one**. Finish covers the Finish button, a row's check, dropping on Done; the chime covers the timer, a row's Start / Stop, the Space key, the composer's ▶ and any status change that stops a running clock

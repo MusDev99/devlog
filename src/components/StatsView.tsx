@@ -1,4 +1,4 @@
-import { useState } from 'preact/hooks';
+import { useMemo, useState } from 'preact/hooks';
 import { plainText } from '../lib/links.ts';
 import { placeOf, PLACES, sizeOf, type Note, type Place } from '../lib/notes.ts';
 import {
@@ -18,11 +18,12 @@ import {
   type Targets,
 } from '../lib/stats.ts';
 import { taskTiming } from '../lib/timing.ts';
+import { useClock } from '../lib/use-clock.ts';
 import { ActivityCalendar } from './ActivityCalendar.tsx';
 import { Icon, type IconName } from './Icon.tsx';
 import { PLACE_NAMES, PLACE_TONE } from './TaskRow.tsx';
 
-type Props = { tasks: Note[]; today: string; nowMs: number; timeZone: string; targets: Targets; onEditTargets: () => void; onToast: (message: string) => void };
+type Props = { tasks: Note[]; today: string; timeZone: string; targets: Targets; onEditTargets: () => void; onToast: (message: string) => void };
 
 type Metric = 'time' | 'points' | 'tasks';
 const METRICS: { id: Metric; label: string }[] = [
@@ -35,15 +36,22 @@ const CARD = 'rounded-[28px] border border-line/70 bg-surface/80 p-4 sm:p-5';
 const TILE = 'rounded-2xl bg-surface-high/80 px-3.5 py-3';
 
 /** Stats tab: today against the daily targets, the last 7 days, the weekly review, where the time went, and what it means. */
-export function StatsView({ tasks, today, nowMs, timeZone, targets, onEditTargets, onToast }: Props) {
-  const days = dayStats(tasks, nowMs, timeZone);
-  const todayStat = days.get(today) ?? { day: today, focusMs: 0, runs: 0, done: 0, points: 0 };
-  const week = series(days, today, 7);
-  const review = weeklyReview(days, today);
-  const split = breakdown(tasks, nowMs, timeZone, today);
-  const notes = insights(tasks, nowMs, timeZone, today, targets);
-  const activeStreak = streak(days, today, isActive);
-  const targetStreak = streak(days, today, onTarget(targets));
+export function StatsView({ tasks, today, timeZone, targets, onEditTargets, onToast }: Props) {
+  // Ticks only while a stopwatch runs; with none running the numbers are computed once per change.
+  const nowMs = useClock(tasks.some((t) => t.startedAt));
+  const { days, todayStat, week, review, split, notes, activeStreak, targetStreak } = useMemo(() => {
+    const days = dayStats(tasks, nowMs, timeZone);
+    return {
+      days,
+      todayStat: days.get(today) ?? { day: today, focusMs: 0, runs: 0, done: 0, points: 0 },
+      week: series(days, today, 7),
+      review: weeklyReview(days, today),
+      split: breakdown(tasks, nowMs, timeZone, today),
+      notes: insights(tasks, nowMs, timeZone, today, targets),
+      activeStreak: streak(days, today, isActive),
+      targetStreak: streak(days, today, onTarget(targets)),
+    };
+  }, [tasks, today, timeZone, targets, tasks.some((t) => t.startedAt) ? nowMs : 0]);
   const doneToday = tasks.filter((t) => t.tag === 'done' && t.day === today);
 
   return (
