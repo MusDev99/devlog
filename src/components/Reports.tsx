@@ -1,4 +1,4 @@
-import { useState } from 'preact/hooks';
+import { useMemo, useState } from 'preact/hooks';
 import type { Note } from '../lib/notes.ts';
 import { formatRecap, isRecapDay, rangeLabel, weekRange, weekRecap } from '../lib/recap.ts';
 import { formatStandup, ruleStandup } from '../lib/standup.ts';
@@ -17,8 +17,8 @@ export function Reports({ today, tasks, onToast }: Props) {
   const { start, end } = weekRange(today);
   const label = rangeLabel(start, end);
 
-  const standup = ruleStandup(tasks, today);
-  const recap = weekRecap(tasks.filter((t) => t.day >= start && t.day <= end));
+  const standup = useMemo(() => ruleStandup(tasks, today), [tasks, today]);
+  const recap = useMemo(() => weekRecap(tasks.filter((t) => t.day >= start && t.day <= end)), [tasks, start, end]);
   const sections: [string, string[]][] =
     tab === 'standup'
       ? [

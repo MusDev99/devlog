@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'preact/hooks';
+import { useClock, useMedia, useStable } from './lib/use-clock.ts';
 import { Avatar } from './components/Avatar.tsx';
 import { Icon } from './components/Icon.tsx';
 import { Reports } from './components/Reports.tsx';
@@ -66,7 +67,8 @@ export function App({ user, onSignOut }: { user: User | null; onSignOut: () => v
   const online = useOnline();
   const now = new Date();
   const today = dayKey(now, timeZone);
-  const [nowMs, setNowMs] = useState(() => Date.now());
+  // Wide screens show Timer and Tasks together; on a phone only the open screen's heavy parts are mounted.
+  const wide = useMedia('(min-width: 1024px)');
   const [load, setLoad] = useState<Load>({ state: 'loading' });
   const [selectedId, setSelectedId] = useState<string | null>(() => loadPref(SELECTED_KEY));
   const [undo, setUndo] = useState<Undo | null>(null);
@@ -161,18 +163,6 @@ export function App({ user, onSignOut }: { user: User | null; onSignOut: () => v
     }
   }
 
-  // Tick once a second only while a stopwatch runs.
-  useEffect(() => {
-    if (!running) return;
-    setNowMs(Date.now());
-    const timer = setInterval(() => setNowMs(Date.now()), 1000);
-    return () => clearInterval(timer);
-  }, [runningTask?.id]);
-
-  useEffect(() => {
-    document.title = runningTask ? `${formatClock(elapsedMs(runningTask, nowMs))} · ${plainText(runningTask.text)}` : 'DevLog';
-  }, [nowMs, runningTask]);
-
   // Phone: once the big timer scrolls away, a mini player keeps play/pause in thumb reach (Fitts).
   useEffect(() => {
     const el = timerRef.current;
@@ -189,11 +179,10 @@ export function App({ user, onSignOut }: { user: User | null; onSignOut: () => v
     playToggle(); // the same chime for start, resume and pause
     if (note.startedAt) return void save([stopTimer(note, at)]);
     select(note.id);
-    setNowMs(at.getTime());
     void save(startTimer(tasks, note.id, at, dayKey(at, timeZone)));
   }
 
-  const toggle = () => selected && toggleTimer(selected);
+  const toggle = useStable(() => selected && toggleTimer(selected));
 
   /** Vibration on / off for this device. Turning it on gives one sample buzz, so the person feels what they chose. */
   function changeHaptics(on: boolean) {
@@ -251,7 +240,6 @@ export function App({ user, onSignOut }: { user: User | null; onSignOut: () => v
     await saveNote(note);
     put(note);
     if (focus && draft.tag !== 'done') {
-      setNowMs(at.getTime());
       select(note.id);
       await save(startTimer([...tasks, note], note.id, at, dayKey(at, timeZone)));
     }
@@ -309,6 +297,7 @@ export function App({ user, onSignOut }: { user: User | null; onSignOut: () => v
   return (
     <div data-mode={running ? 'running' : 'idle'} class="mode-wash min-h-dvh">
       <div class="flex min-h-dvh w-full flex-col px-4 pt-[max(8px,env(safe-area-inset-top))] pb-[calc(10rem+env(safe-area-inset-bottom))] sm:px-6 lg:px-8 lg:pb-8 2xl:px-12">
+        <RunningTitle task={runningTask} />
         <header class="flex items-center justify-between gap-x-4 py-4">
           <div class="flex min-w-0 items-baseline gap-3">
             <p class="text-lg font-bold tracking-tight">
@@ -401,7 +390,7 @@ export function App({ user, onSignOut }: { user: User | null; onSignOut: () => v
         {screen === 'stats' && (
           <main class="flex-1">
             {load.state === 'ready' ? (
-              <StatsView tasks={tasks} today={today} nowMs={nowMs} timeZone={timeZone} targets={targets} onEditTargets={() => setSettingsOpen(true)} onToast={setToast} />
+              <StatsView tasks={tasks} today={today} timeZone={timeZone} targets={targets} onEditTargets={() => setSettingsOpen(true)} onToast={setToast} />
             ) : (
               <div class="h-96 animate-pulse rounded-[28px] bg-surface" aria-label="Loading stats" />
             )}
@@ -414,7 +403,6 @@ export function App({ user, onSignOut }: { user: User | null; onSignOut: () => v
           <div ref={timerRef} class={screen === 'tasks' ? 'hidden lg:block' : ''}>
             <TimerPanel
               task={selected}
-              nowMs={nowMs}
               onToggle={toggle}
               onReset={() => selected && void save([resetTimer(selected)], { message: 'Timer reset to 00:00', before: selected })}
               onDone={() => selected && void setStatus(selected, 'done')}
@@ -428,11 +416,10 @@ export function App({ user, onSignOut }: { user: User | null; onSignOut: () => v
                 Could not open this device's storage. Private mode can block it; try a normal window.
               </p>
             )}
-            {load.state === 'ready' && (
+            {load.state === 'ready' && (wide || screen === 'tasks') && (
               <SessionTasks
                 tasks={tasks}
                 today={today}
-                nowMs={nowMs}
                 focusId={selected?.id ?? null}
                 onAdd={add}
                 onSelect={(note) => select(note.id === selected?.id && !note.startedAt ? null : note.id)}
@@ -446,7 +433,7 @@ export function App({ user, onSignOut }: { user: User | null; onSignOut: () => v
           </div>
 
           <div class={`lg:col-start-1 ${screen === 'tasks' ? 'hidden lg:block' : ''}`}>
-            <Reports today={today} tasks={tasks} onToast={setToast} />
+            {(wide || screen === 'timer') && <Reports today={today} tasks={tasks} onToast={setToast} />}
           </div>
         </main>
 
@@ -476,7 +463,7 @@ export function App({ user, onSignOut }: { user: User | null; onSignOut: () => v
       {/* Phone: bottom tab bar in thumb reach (Fitts), the pattern people know from native apps (Jakob). */}
       <nav
         aria-label="Screens"
-        class="fixed inset-x-0 bottom-0 z-40 border-t border-line/70 bg-surface/90 pb-[env(safe-area-inset-bottom)] backdrop-blur-xl lg:hidden"
+        class="fixed inset-x-0 bottom-0 z-40 border-t border-line/70 bg-surface pb-[env(safe-area-inset-bottom)] lg:hidden [@media(hover:hover)]:bg-surface/90 [@media(hover:hover)]:backdrop-blur-xl"
       >
         <div role="tablist" class="mx-auto grid max-w-md grid-cols-3">
           {TABS.map((tab) => {
@@ -508,9 +495,9 @@ export function App({ user, onSignOut }: { user: User | null; onSignOut: () => v
 
       {showMini && (
         <div class="fixed inset-x-0 bottom-[calc(4.75rem+env(safe-area-inset-bottom))] z-40 animate-rise px-3 lg:hidden">
-          <div class="mx-auto flex max-w-md items-center gap-3 rounded-full border border-line/70 bg-surface-high/95 py-1.5 pr-1.5 pl-4 shadow-2xl shadow-black/40 backdrop-blur">
+          <div class="mx-auto flex max-w-md items-center gap-3 rounded-full border border-line/70 bg-surface-high py-1.5 pr-1.5 pl-4 shadow-2xl shadow-black/40 [@media(hover:hover)]:bg-surface-high/95 [@media(hover:hover)]:backdrop-blur">
             <span aria-hidden="true" class={`size-2 shrink-0 rounded-full bg-accent ${running ? 'animate-glow' : ''}`} />
-            <span class="text-lg font-semibold tabular-nums">{formatClock(selected ? elapsedMs(selected, nowMs) : 0)}</span>
+            <MiniClock task={selected} />
             <span class="min-w-0 flex-1 truncate text-sm text-muted">{selected ? plainText(selected.text) : ''}</span>
             <button
               type="button"
@@ -557,4 +544,19 @@ export function App({ user, onSignOut }: { user: User | null; onSignOut: () => v
       </div>
     </div>
   );
+}
+
+/** The mini player's time: the only part of it that ticks. */
+function MiniClock({ task }: { task: Note | null }) {
+  const nowMs = useClock(Boolean(task?.startedAt));
+  return <span class="text-lg font-semibold tabular-nums">{formatClock(task ? elapsedMs(task, nowMs) : 0)}</span>;
+}
+
+/** Keeps the tab title in step with the running stopwatch; renders nothing. */
+function RunningTitle({ task }: { task: Note | null }) {
+  const nowMs = useClock(task !== null);
+  useEffect(() => {
+    document.title = task ? `${formatClock(elapsedMs(task, nowMs))} · ${plainText(task.text)}` : 'DevLog';
+  }, [nowMs, task]);
+  return null;
 }

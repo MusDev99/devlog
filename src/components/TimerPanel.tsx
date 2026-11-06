@@ -1,11 +1,11 @@
 import { elapsedMs, formatClock, formatDuration, runMs, type Note } from '../lib/notes.ts';
 import { plainText } from '../lib/links.ts';
 import { taskTiming } from '../lib/timing.ts';
+import { useClock } from '../lib/use-clock.ts';
 import { Icon } from './Icon.tsx';
 
 type Props = {
   task: Note | null;
-  nowMs: number;
   onToggle: () => void;
   onReset: () => void;
   onDone: () => void;
@@ -21,8 +21,9 @@ const CIRCUMFERENCE = 2 * Math.PI * R;
  * Start / Pause in the middle (Fitts, Von Restorff); Reset and Finish small on either side. The ring
  * sweeps once a minute so a running clock is visible at a glance.
  */
-export function TimerPanel({ task, nowMs, onToggle, onReset, onDone }: Props) {
+export function TimerPanel({ task, onToggle, onReset, onDone }: Props) {
   const running = Boolean(task?.startedAt);
+  const nowMs = useClock(running);
   const total = task ? elapsedMs(task, nowMs) : 0;
   const run = task ? runMs(task, nowMs) : 0;
   const sweep = running ? (total % 60_000) / 60_000 : 0;
@@ -33,7 +34,7 @@ export function TimerPanel({ task, nowMs, onToggle, onReset, onDone }: Props) {
   const pauses = timing && timing.pauses > 0 ? ` · ${timing.pauses} ${timing.pauses === 1 ? 'pause' : 'pauses'} (${formatDuration(timing.pausedMs, false)})` : '';
 
   return (
-    <section aria-label="Task stopwatch" class="rounded-[28px] border border-line/70 bg-surface/80 p-4 shadow-xl shadow-black/20 backdrop-blur sm:p-6">
+    <section aria-label="Task stopwatch" class="rounded-[28px] border border-line/70 bg-surface p-4 shadow-xl shadow-black/20 sm:p-6 [@media(hover:hover)]:bg-surface/80 [@media(hover:hover)]:backdrop-blur">
       <div class="flex min-h-11 items-center justify-center">
         {task ? (
           <p class="inline-flex max-w-full items-center gap-2 rounded-full bg-surface-high px-3.5 py-2 text-sm font-medium">
