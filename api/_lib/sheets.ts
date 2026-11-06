@@ -128,9 +128,13 @@ export const USER_HEADERS = [
   'target_tasks',
   'target_points',
   'target_minutes',
+  'jira_base_url',
 ];
 /** Columns G:I hold the person's daily targets (blank until first saved). */
 const TARGET_RANGE = { from: 'G', to: 'I' } as const;
+
+/** Column J holds the person's Jira site (blank until first saved). */
+const JIRA_COLUMN = 'J';
 
 /** The row number of a person in Users (2-based), or null when they never signed in. */
 async function userRow(sheets: Sheets, email: string): Promise<number | null> {
@@ -153,6 +157,22 @@ export async function writeUserTargets(sheets: Sheets, email: string, cells: str
   const row = await userRow(sheets, email);
   if (row === null) return false;
   await sheets.batchUpdate([{ range: `${USERS_TAB}!${TARGET_RANGE.from}${row}:${TARGET_RANGE.to}${row}`, values: [cells] }]);
+  return true;
+}
+
+/** A person's Jira cell (text, possibly blank), or null when they have no Users row. */
+export async function readUserJira(sheets: Sheets, email: string): Promise<string[] | null> {
+  const row = await userRow(sheets, email);
+  if (row === null) return null;
+  const cells = (await sheets.getValues(`${USERS_TAB}!${JIRA_COLUMN}${row}:${JIRA_COLUMN}${row}`))[0] ?? [];
+  return [cells[0] ?? ''];
+}
+
+/** Write a person's Jira cell; false when they have no Users row. */
+export async function writeUserJira(sheets: Sheets, email: string, cells: string[]): Promise<boolean> {
+  const row = await userRow(sheets, email);
+  if (row === null) return false;
+  await sheets.batchUpdate([{ range: `${USERS_TAB}!${JIRA_COLUMN}${row}:${JIRA_COLUMN}${row}`, values: [cells.slice(0, 1)] }]);
   return true;
 }
 

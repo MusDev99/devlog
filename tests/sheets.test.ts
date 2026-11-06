@@ -3,12 +3,14 @@ import { test } from 'node:test';
 import {
   createSheets,
   readSheetsConfig,
+  readUserJira,
   readUserTargets,
   serviceJwt,
   SHEETS,
   upsertUser,
   USER_HEADERS,
   USERS_TAB,
+  writeUserJira,
   writeUserTargets,
   type SheetsConfig,
 } from '../api/_lib/sheets.ts';
@@ -156,4 +158,18 @@ test('a Sheets error surfaces as an exception (the caller decides what to do)', 
   const { pem } = await testKey();
   const sheets = createSheets(cfgWith(pem), async (url) => (url === SHEETS.token ? new Response('{"access_token":"t"}') : new Response('', { status: 403 })), () => NOW);
   await assert.rejects(sheets.getValues('Users!A2:A'), /sheets 403/);
+});
+
+test('the Jira site lives in column J of the person’s Users row: blank until saved, written in place, none for strangers', async () => {
+  const { pem } = await testKey();
+  const google = fakeGoogle({ [USERS_TAB]: [[...USER_HEADERS], ['ana@example.com', 'Ana', 'g1', 'r', 'l', ''], ['bo@example.com', 'Bo', 'g2', 'r', 'l', '', '5', '21', '180']] });
+  const sheets = createSheets(cfgWith(pem), google.fetchFn, () => NOW);
+  assert.deepEqual(await readUserJira(sheets, 'Bo@Example.com'), ['']);
+  assert.equal(await writeUserJira(sheets, 'bo@example.com', ['https://airasia.atlassian.net']), true);
+  assert.equal(google.tabs[USERS_TAB]?.[2]?.[9], 'https://airasia.atlassian.net');
+  assert.deepEqual(google.tabs[USERS_TAB]?.[2]?.slice(6, 9), ['5', '21', '180'], 'targets next to it are untouched');
+  assert.deepEqual(await readUserJira(sheets, 'bo@example.com'), ['https://airasia.atlassian.net']);
+  assert.deepEqual(google.tabs[USERS_TAB]?.[1]?.slice(6), [], "Ana's row untouched");
+  assert.equal(await readUserJira(sheets, 'stranger@example.com'), null);
+  assert.equal(await writeUserJira(sheets, 'stranger@example.com', ['https://x.example.com']), false);
 });

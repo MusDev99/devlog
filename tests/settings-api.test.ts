@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { handleSettings, type SettingsDeps } from '../api/_lib/settings-handler.ts';
+import { isJiraBase, jiraFromCells, jiraToCells } from '../src/lib/jira.ts';
 import { isTargets, targetsFromCells, targetsToCells, type Targets } from '../src/lib/targets.ts';
 
 test('targets ↔ sheet cells: round trip; blank or out-of-range cells read as "not set"', () => {
@@ -62,4 +63,46 @@ test('settings guards', async () => {
   assert.equal(await status({}, put({ targets: { tasks: 0, points: 21, minutes: 180 } })), 400);
   assert.equal(await status({ write: async () => false }, put(good)), 404);
   assert.equal(await status({ read: async () => Promise.reject(new Error('sheets 500')) }, get()), 502);
+});
+
+function jiraDeps(over: Partial<SettingsDeps<string>> = {}): SettingsDeps<string> & { written: string[][] } {
+  const written: string[][] = [];
+  return {
+    configured: true,
+    sheetConfigured: true,
+    isSameOrigin: () => true,
+    readUser: async () => ({ email: 'ana@example.com' }),
+    allow: () => true,
+    field: 'jira',
+    isValid: isJiraBase,
+    fromCells: jiraFromCells,
+    toCells: jiraToCells,
+    read: async () => ['https://airasia.atlassian.net'],
+    write: async (_email, cells) => (written.push(cells), true),
+    now: () => 0,
+    written,
+    ...over,
+  };
+}
+const putJira = (body: unknown) => new Request('https://devlog.test/api/jira', { method: 'PUT', body: JSON.stringify(body) });
+
+test('jira: GET returns my Jira site under its own key; blank or hand-edited unsafe cells read as none', async () => {
+  const req = new Request('https://devlog.test/api/jira');
+  assert.deepEqual(await (await handleSettings(req, jiraDeps())).json(), { jira: 'https://airasia.atlassian.net' });
+  assert.deepEqual(await (await handleSettings(req, jiraDeps({ read: async () => [''] }))).json(), { jira: '' });
+  assert.deepEqual(await (await handleSettings(req, jiraDeps({ read: async () => ['javascript:alert(1)'] }))).json(), { jira: '' });
+  assert.deepEqual(await (await handleSettings(req, jiraDeps({ read: async () => null }))).json(), { jira: null });
+});
+
+test('jira: PUT writes only a canonical https origin (or blank to clear); anything else is refused', async () => {
+  const d = jiraDeps();
+  assert.equal((await handleSettings(putJira({ jira: 'https://airasia.atlassian.net' }), d)).status, 200);
+  assert.equal((await handleSettings(putJira({ jira: '' }), d)).status, 200);
+  assert.deepEqual(d.written, [['https://airasia.atlassian.net'], ['']]);
+  for (const bad of ['airasia.atlassian.net', 'http://airasia.atlassian.net', 'javascript:alert(1)', 'https://airasia.atlassian.net/browse', 42, null]) {
+    assert.equal((await handleSettings(putJira({ jira: bad }), d)).status, 400, String(bad));
+  }
+  assert.equal((await handleSettings(putJira({ targets: { tasks: 1, points: 1, minutes: 15 } }), d)).status, 400, 'the targets key is not accepted here');
+  assert.equal((await handleSettings(putJira({ jira: 'https://airasia.atlassian.net' }), jiraDeps({ isSameOrigin: () => false }))).status, 403);
+  assert.equal(d.written.length, 2, 'refused requests wrote nothing');
 });
