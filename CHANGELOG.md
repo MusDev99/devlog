@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-11-06 17:00
+
+- feat(gestures): **swipe a task row on a phone.** Swipe right to finish it (or reopen a done one), swipe left for its actions. The row follows the finger by transform only, with a green Done / accent More layer behind it, a faint buzz when you pass the point where letting go acts, a rubber-band past it, a flick commits early, and a short swipe springs back. Vertical movement is never touched, so scrolling stays the browser's (`touch-action: pan-y pinch-zoom`); pinch zoom still works. Mouse users still drag, and every action keeps its button (the tick, the ⋯ menu), so the swipe is a shortcut and never the only way
+- Rules (`src/lib/swipe.ts`, pure, 9 tests): axis lock after 8 px (a diagonal stays a scroll), threshold 30% of the row (72-160 px), 1:1 then 35%, a direction with no action resists to 24 px. `src/lib/use-swipe.ts` applies them; a long-press drag and a swipe never start together (`dragState`)
+- perf(drag): rows ignore the pointer while a task is dragged (no hover restyle on every move); drag cost 14-19 -> 11-16 ms per move at 4x throttle
+- change(row): rows are opaque (`bg-surface-high`) so the layer behind never shows through
+
 ## 2026-11-06 14:30
 
 - perf(instant): **taps answer in the same frame.** Add, Start / Pause, status, move, size, delete and Undo change the screen first and write to the device in the background (`save` / `add` / `remove` / `restore` in `App.tsx`). If a write fails, only the tasks still showing that attempt go back as they were (later edits stay), its Undo goes away and a toast says so; a failed add puts the text back in the field. Pure rules in `src/lib/optimistic.ts` (tested)

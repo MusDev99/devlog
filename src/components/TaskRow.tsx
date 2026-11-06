@@ -4,6 +4,7 @@ import { elapsedMs, formatClock, formatDuration, PLACES, placeOf, QUADRANT_LABEL
 import { linksIn, titleText } from '../lib/links.ts';
 import { taskTiming } from '../lib/timing.ts';
 import { useClock } from '../lib/use-clock.ts';
+import { useSwipe } from '../lib/use-swipe.ts';
 import { Icon } from './Icon.tsx';
 
 export type RowActions = {
@@ -50,6 +51,8 @@ const REVEAL = '[@media(hover:hover)]:opacity-0 group-hover:opacity-100 group-fo
 function TaskRowView({ note, focused, showPlace, onPointerDown, onSelect, onTimer, onStatus, onPlace, onSize, onDelete }: Props) {
   const [open, setOpen] = useState(false);
   const done = note.tag === 'done';
+  // Touch swipe: right finishes (or reopens a done task), left opens the actions. The buttons stay for everyone else.
+  const swipe = useSwipe({ canRight: true, onRight: () => onStatus(note, done ? 'todo' : 'done'), onLeft: () => setOpen(true) });
   const size = sizeOf(note);
   const place = placeOf(note);
   const running = Boolean(note.startedAt);
@@ -68,14 +71,30 @@ function TaskRowView({ note, focused, showPlace, onPointerDown, onSelect, onTime
 
   return (
     <li
+      ref={swipe.row}
       onPointerDown={onPointerDown && ((e) => onPointerDown(note, e))}
       onContextMenu={onPointerDown && ((e) => e.preventDefault())}
-      class={`group rounded-xl transition-colors select-none [-webkit-touch-callout:none] [contain-intrinsic-size:auto_56px] [content-visibility:auto] ${
+      class={`group relative touch-pan-y touch-pinch-zoom overflow-hidden rounded-xl select-none [-webkit-touch-callout:none] [contain-intrinsic-size:auto_56px] [content-visibility:auto] ${
         fresh ? 'animate-rise' : ''
-      } ${
-        focused ? 'bg-accent/10 shadow-[inset_3px_0_0_var(--color-accent)]' : 'bg-surface-high/80 hover:bg-surface-highest/80'
       }`}
     >
+      {/* Under the row: what letting go will do. Hidden until a swipe starts; the row itself is opaque. */}
+      <div ref={swipe.rightLayer} aria-hidden="true" class="group/swipe invisible absolute inset-0 flex items-center gap-2 bg-ok pl-4 font-semibold text-bg" data-armed="false">
+        <Icon name="check" class="size-5 transition-transform group-data-[armed=true]/swipe:scale-125" />
+        {done ? 'Reopen' : 'Done'}
+      </div>
+      <div ref={swipe.leftLayer} aria-hidden="true" class="group/swipe invisible absolute inset-0 flex items-center justify-end gap-2 bg-accent pr-4 font-semibold text-on-accent" data-armed="false">
+        More
+        <Icon name="more" class="size-5 transition-transform group-data-[armed=true]/swipe:scale-125" />
+      </div>
+      <div
+        ref={swipe.content}
+        class={`relative transition-colors will-change-transform ${
+          focused
+            ? 'bg-[color-mix(in_oklab,var(--color-accent)_10%,var(--color-surface-high))] shadow-[inset_3px_0_0_var(--color-accent)]'
+            : 'bg-surface-high hover:bg-surface-highest'
+        }`}
+      >
       <div class="flex items-center gap-0.5 pr-0.5 pl-1">
         <button
           type="button"
@@ -96,7 +115,7 @@ function TaskRowView({ note, focused, showPlace, onPointerDown, onSelect, onTime
         <button
           type="button"
           data-row-main
-          onClick={() => !done && onSelect(note)}
+          onClick={() => !done && !swipe.justSwiped() && onSelect(note)}
           aria-pressed={done ? undefined : focused}
           aria-label={done ? title : `${focused ? 'Selected' : 'Select'}: ${title}`}
           class={`block min-h-11 w-full py-2 text-left ${done ? 'cursor-default' : 'cursor-pointer'}`}
@@ -226,6 +245,7 @@ function TaskRowView({ note, focused, showPlace, onPointerDown, onSelect, onTime
           </div>
         </div>
       )}
+      </div>
     </li>
   );
 }

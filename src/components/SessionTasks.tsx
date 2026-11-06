@@ -8,6 +8,7 @@ import { Composer } from './Composer.tsx';
 import { DoneBucket } from './DoneBucket.tsx';
 import { Icon } from './Icon.tsx';
 import { useStable } from '../lib/use-clock.ts';
+import { dragState } from '../lib/use-swipe.ts';
 import { PLACE_TONE, TaskRow, type RowActions } from './TaskRow.tsx';
 
 type Props = RowActions & {
@@ -75,6 +76,7 @@ export function SessionTasks({ tasks, today, focusId, onAdd, ...actions }: Props
   const begin = (p: Pending, x: number, y: number) => {
     const d = { note: p.note, x, y, over: placeAt(x, y) };
     dragRef.current = d;
+    dragState.active = true;
     setDrag({ ...d });
     if (p.touch) buzz('grab');
   };
@@ -133,6 +135,7 @@ export function SessionTasks({ tasks, today, focusId, onAdd, ...actions }: Props
       if (frame.current !== null) cancelAnimationFrame(frame.current);
       frame.current = null;
       dragRef.current = null;
+      dragState.active = false;
       setDrag(null);
     };
     const cancel = () => {
@@ -185,7 +188,7 @@ export function SessionTasks({ tasks, today, focusId, onAdd, ...actions }: Props
   const finished = useMemo(() => doneBucket(tasks, today), [tasks, today]);
 
   return (
-    <section aria-labelledby="tasks-title" class={drag ? 'select-none' : ''}>
+    <section aria-labelledby="tasks-title" class={drag ? 'select-none [&_li]:pointer-events-none' : ''}>
       <div class="flex items-center gap-3">
         <div class="min-w-0 flex-1">
           <div class="flex items-baseline gap-2">
