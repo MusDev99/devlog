@@ -1,4 +1,4 @@
-import { useState } from 'preact/hooks';
+import { useEffect, useRef, useState } from 'preact/hooks';
 import { MAX_NOTE_LENGTH, parseDraft, SIZES, validateDraft, type Draft, type Size } from '../lib/notes.ts';
 import { useSpeech } from '../lib/speech.ts';
 import { Icon } from './Icon.tsx';
@@ -13,6 +13,20 @@ export function Composer({ onAdd }: Props) {
   const [text, setText] = useState('');
   const [size, setSize] = useState<Size>(1);
   const [error, setError] = useState<string | null>(null);
+  // Progressive disclosure (Hick): a quiet field until you engage; size and ▶ appear on focus or once there is text.
+  const form = useRef<HTMLFormElement>(null);
+  const [focused, setFocused] = useState(false);
+  useEffect(() => {
+    const el = form.current;
+    if (!el) return;
+    const inside = (e: FocusEvent) => setFocused(e.type === 'focusin' || (e.relatedTarget instanceof Node && el.contains(e.relatedTarget)));
+    el.addEventListener('focusin', inside);
+    el.addEventListener('focusout', inside);
+    return () => {
+      el.removeEventListener('focusin', inside);
+      el.removeEventListener('focusout', inside);
+    };
+  }, []);
   const speech = useSpeech((heard) => setText((t) => (t ? `${t} ${heard}` : heard)));
 
   async function submit(focus: boolean) {
@@ -31,9 +45,11 @@ export function Composer({ onAdd }: Props) {
     }
   }
 
+  const expanded = focused || text !== '' || size !== 1 || speech.listening;
   const square = 'press state-layer grid size-12 shrink-0 place-items-center rounded-2xl';
   return (
     <form
+      ref={form}
       onSubmit={(e) => {
         e.preventDefault();
         void submit(false);
@@ -42,7 +58,7 @@ export function Composer({ onAdd }: Props) {
     >
       <div class="flex flex-wrap items-center gap-2 sm:flex-nowrap">
         {/* Phone: the text gets a full line (Fitts); the controls sit under it, to the right. */}
-        <div class="flex min-h-12 w-full min-w-0 items-center rounded-2xl border border-transparent bg-surface-high pl-4 transition-colors focus-within:border-accent/60 hover:border-line sm:w-auto sm:flex-1">
+        <div class={`flex min-h-12 min-w-0 items-center rounded-2xl border border-transparent bg-surface-high pl-4 transition-colors focus-within:border-accent/60 hover:border-line sm:w-auto sm:flex-1 ${expanded ? 'w-full' : 'flex-1'}`}>
           <label class="sr-only" for="note-text">
             New task
           </label>
@@ -77,7 +93,7 @@ export function Composer({ onAdd }: Props) {
           onClick={() => void submit(true)}
           aria-label="Add and start timer"
           title="Add and start timer"
-          class={`${square} ml-auto bg-surface-high text-accent sm:ml-0`}
+          class={`${square} ml-auto bg-surface-high text-accent sm:ml-0 ${expanded ? '' : 'hidden sm:grid'}`}
         >
           <Icon name="play" class="size-5" />
         </button>
@@ -88,7 +104,7 @@ export function Composer({ onAdd }: Props) {
           id="note-size"
           value={size}
           onChange={(e) => setSize(Number(e.currentTarget.value) as Size)}
-          class="min-h-12 shrink-0 cursor-pointer rounded-2xl bg-surface-high px-3 text-sm font-medium text-fg"
+          class={`min-h-12 shrink-0 cursor-pointer rounded-2xl bg-surface-high px-3 text-sm font-medium text-fg ${expanded ? '' : 'hidden sm:block'}`}
         >
           {SIZES.map((s) => (
             <option key={s} value={s}>

@@ -1,6 +1,6 @@
 import { memo } from 'preact/compat';
 import { useState } from 'preact/hooks';
-import { elapsedMs, formatClock, formatDuration, PLACES, placeOf, QUADRANT_LABELS, SIZES, sizeOf, TAG_LABELS, type Note, type Place, type Size, type Tag } from '../lib/notes.ts';
+import { elapsedMs, formatClock, formatDuration, placeOf, QUADRANT_LABELS, sizeOf, TAG_LABELS, type Note, type Place, type Size, type Tag } from '../lib/notes.ts';
 import { linksIn, titleText } from '../lib/links.ts';
 import { taskTiming } from '../lib/timing.ts';
 import { useClock } from '../lib/use-clock.ts';
@@ -15,6 +15,8 @@ export type RowActions = {
   onPlace: (note: Note, place: Place) => void;
   onSize: (note: Note, size: Size) => void;
   onDelete: (note: Note) => void;
+  /** Open this task's actions (the bottom sheet). */
+  onMenu: (note: Note) => void;
 };
 
 type Props = RowActions & {
@@ -48,11 +50,11 @@ const STATUS_TONE: Partial<Record<Tag, string>> = { doing: 'bg-warn/15 text-warn
 const REVEAL = '[@media(hover:hover)]:opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity';
 
 /** Compact task row: tick, the task (tap to select, drag to move), its own Start/Stop, and a menu for the rest. */
-function TaskRowView({ note, focused, showPlace, onPointerDown, onSelect, onTimer, onStatus, onPlace, onSize, onDelete }: Props) {
-  const [open, setOpen] = useState(false);
+function TaskRowView({ note, focused, showPlace, onPointerDown, onSelect, onTimer, onStatus, onMenu }: Props) {
+  const [allLinks, setAllLinks] = useState(false);
   const done = note.tag === 'done';
   // Touch swipe: right finishes (or reopens a done task), left opens the actions. The buttons stay for everyone else.
-  const swipe = useSwipe({ canRight: true, onRight: () => onStatus(note, done ? 'todo' : 'done'), onLeft: () => setOpen(true) });
+  const swipe = useSwipe({ canRight: true, onRight: () => onStatus(note, done ? 'todo' : 'done'), onLeft: () => onMenu(note) });
   const size = sizeOf(note);
   const place = placeOf(note);
   const running = Boolean(note.startedAt);
@@ -66,8 +68,6 @@ function TaskRowView({ note, focused, showPlace, onPointerDown, onSelect, onTime
   const span = timing?.start && timing.pausedMs >= 60_000 ? formatDuration(timing.spanMs, false) : null;
   // Only a task just added slides in; rows that re-mount (tab switch, move) appear calmly.
   const fresh = Date.now() - Date.parse(note.createdAt) < 1500;
-  const chipBase = 'press state-layer inline-flex min-h-11 items-center gap-1.5 rounded-xl px-3 text-sm font-medium';
-  const chip = `${chipBase} bg-surface-highest/60`;
 
   return (
     <li
@@ -131,7 +131,7 @@ function TaskRowView({ note, focused, showPlace, onPointerDown, onSelect, onTime
               {/* Finished: actual vs span, so pauses are visible at a glance. */}
               {done && span && <span class="tabular-nums">· span {span}</span>}
               {STATUS_TONE[note.tag] && <span class={`rounded-md px-1.5 py-px font-medium ${STATUS_TONE[note.tag]}`}>{TAG_LABELS[note.tag]}</span>}
-              {showPlace && (
+              {showPlace && place !== 'unsorted' && (
                 <span class={`inline-flex items-center gap-1 ${PLACE_TONE[place].text}`}>
                   <span aria-hidden="true" class={`size-1.5 rounded-full ${PLACE_TONE[place].dot}`} />
                   {PLACE_NAMES[place]}
@@ -144,7 +144,7 @@ function TaskRowView({ note, focused, showPlace, onPointerDown, onSelect, onTime
         {links.length > 0 && (
           // 28px chip inside a 44px tap target (Fitts); negative margins keep the row compact.
           <span class="-mt-3 -mb-1.5 flex flex-wrap gap-x-1.5">
-            {links.map((l) => (
+            {(allLinks ? links : links.slice(0, 1)).map((l) => (
               <a
                 key={l.href}
                 href={l.href}
@@ -160,6 +160,11 @@ function TaskRowView({ note, focused, showPlace, onPointerDown, onSelect, onTime
                 </span>
               </a>
             ))}
+            {!allLinks && links.length > 1 && (
+              <button type="button" onClick={() => setAllLinks(true)} aria-label={`Show ${links.length - 1} more links`} class="press inline-flex min-h-11 items-center">
+                <span class="inline-flex h-7 items-center rounded-md bg-surface-highest px-2 text-xs font-semibold text-muted">+{links.length - 1}</span>
+              </button>
+            )}
           </span>
         )}
         </div>
@@ -180,71 +185,15 @@ function TaskRowView({ note, focused, showPlace, onPointerDown, onSelect, onTime
         )}
         <button
           type="button"
-          onClick={() => setOpen((o) => !o)}
-          aria-expanded={open}
+          onClick={() => onMenu(note)}
+          aria-haspopup="dialog"
           aria-label={`More actions: ${title}`}
-          class={`press state-layer grid size-11 shrink-0 place-items-center rounded-full text-muted hover:text-fg ${open ? '' : REVEAL}`}
+          class={`press state-layer grid size-11 shrink-0 place-items-center rounded-full text-muted hover:text-fg ${REVEAL}`}
         >
           <Icon name="more" class="size-5" />
         </button>
       </div>
 
-      {open && (
-        <div class="grid animate-rise gap-2.5 border-t border-line/70 px-3 pt-2.5 pb-3">
-          <p class="text-[11px] font-semibold tracking-wider text-muted uppercase">Move to</p>
-          <div class="flex flex-wrap gap-2">
-            {PLACES.filter((p) => p !== place).map((p) => (
-              <button key={p} type="button" onClick={() => onPlace(note, p)} class={chip}>
-                <span aria-hidden="true" class={`size-2 rounded-full ${PLACE_TONE[p].dot}`} />
-                {PLACE_NAMES[p]}
-              </button>
-            ))}
-          </div>
-          <div class="flex flex-wrap items-end gap-x-6 gap-y-2.5">
-            <div class="w-full">
-              <p class="text-[11px] font-semibold tracking-wider text-muted uppercase">Story points</p>
-              {/* Fibonacci 1–21: seven targets wrap on a phone rather than run off the edge. */}
-              <div class="mt-2 flex flex-wrap gap-2">
-                {SIZES.map((s) => (
-                  <button
-                    key={s}
-                    type="button"
-                    aria-pressed={s === size}
-                    aria-label={`${s} story points`}
-                    onClick={() => onSize(note, s)}
-                    class={`${chipBase} min-w-11 justify-center tabular-nums ${s === size ? 'bg-accent font-semibold text-on-accent' : 'bg-surface-highest/60'}`}
-                  >
-                    {s}
-                  </button>
-                ))}
-              </div>
-            </div>
-            <div>
-              <p class="text-[11px] font-semibold tracking-wider text-muted uppercase">Status</p>
-              <div class="mt-2 flex flex-wrap gap-2">
-                {(['todo', 'doing', 'blocker'] as const)
-                  .filter((t) => t !== note.tag)
-                  .map((t) => (
-                    <button key={t} type="button" onClick={() => onStatus(note, t)} class={chip}>
-                      {TAG_LABELS[t]}
-                    </button>
-                  ))}
-              </div>
-            </div>
-          </div>
-          <div class="flex justify-end">
-            <button
-              type="button"
-              onClick={() => onDelete(note)}
-              aria-label={`Delete task: ${title}`}
-              class="press state-layer inline-flex min-h-11 items-center gap-1.5 rounded-xl px-3 text-sm font-medium text-error"
-            >
-              <Icon name="delete" class="size-[18px]" />
-              Delete
-            </button>
-          </div>
-        </div>
-      )}
       </div>
     </li>
   );

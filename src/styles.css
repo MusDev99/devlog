@@ -228,6 +228,24 @@ body {
   -webkit-tap-highlight-color: transparent;
 }
 
+/* Bottom sheet (a native dialog): slides up from the bottom edge; the backdrop fades. Reduced motion cuts both. */
+.sheet[open] {
+  animation: sheet-up 240ms var(--ease-standard) both;
+}
+.sheet[open]::backdrop {
+  animation: fade-in 200ms ease-out both;
+}
+@keyframes sheet-up {
+  from {
+    transform: translateY(100%);
+  }
+}
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+}
+
 /* Loading placeholder: a light band sweeps across by transform only (no paint of the page). Reduced motion stops it at the end frame, where the band is out of view. */
 .skeleton {
   position: relative;

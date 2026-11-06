@@ -1,5 +1,14 @@
 # Changelog
 
+## 2026-11-06 19:00
+
+- feat(tasks): **one bottom sheet for a task's actions** (`RowSheet.tsx`, a native modal dialog: focus trapped, Esc closes, tap outside closes) replaces the menu that expanded inside each row and pushed the list down. Move to, Story points (stays open so you see the change), Status, Delete. Opens from the ⋯ button or a left swipe
+- feat(tasks): **less on every row**: only the first link shows, the rest sit behind a `+n` chip (tap to show all); the place label no longer repeats "Unsorted" on every List row; rows keep tick, title, points, Start and ⋯
+- feat(tasks): **quadrants collapse** (tap the header; remembered per device); an empty quadrant on a phone is a slim drop strip instead of a 160 px box
+- feat(composer): **the add field is quiet until you use it**: size and ▶ appear on focus or once there is text (always visible from 640 px wide)
+- feat(tasks): **today's points toward your target** next to the Tasks title (`8/10 SP today`, turns green with a check at the target); the number pops when it changes
+- Spec: `docs/features/declutter/feature.md`
+
 ## 2026-11-06 17:00
 
 - feat(gestures): **swipe a task row on a phone.** Swipe right to finish it (or reopen a done one), swipe left for its actions. The row follows the finger by transform only, with a green Done / accent More layer behind it, a faint buzz when you pass the point where letting go acts, a rubber-band past it, a flick commits early, and a short swipe springs back. Vertical movement is never touched, so scrolling stays the browser's (`touch-action: pan-y pinch-zoom`); pinch zoom still works. Mouse users still drag, and every action keeps its button (the tick, the ⋯ menu), so the swipe is a shortcut and never the only way

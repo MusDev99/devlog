@@ -446,6 +446,7 @@ export function App({ user, onSignOut }: { user: User | null; onSignOut: () => v
                 tasks={tasks}
                 today={today}
                 focusId={selected?.id ?? null}
+                targetPoints={targets.points}
                 onAdd={add}
                 onSelect={(note) => select(note.id === selected?.id && !note.startedAt ? null : note.id)}
                 onTimer={toggleTimer}
