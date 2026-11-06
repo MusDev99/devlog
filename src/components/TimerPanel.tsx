@@ -6,6 +6,8 @@ import { Icon } from './Icon.tsx';
 
 type Props = {
   task: Note | null;
+  /** Tasks are still being read from the device: show placeholders, not "No task selected". */
+  loading?: boolean;
   onToggle: () => void;
   onReset: () => void;
   onDone: () => void;
@@ -21,7 +23,7 @@ const CIRCUMFERENCE = 2 * Math.PI * R;
  * Start / Pause in the middle (Fitts, Von Restorff); Reset and Finish small on either side. The ring
  * sweeps once a minute so a running clock is visible at a glance.
  */
-export function TimerPanel({ task, onToggle, onReset, onDone }: Props) {
+export function TimerPanel({ task, loading = false, onToggle, onReset, onDone }: Props) {
   const running = Boolean(task?.startedAt);
   const nowMs = useClock(running);
   const total = task ? elapsedMs(task, nowMs) : 0;
@@ -36,7 +38,9 @@ export function TimerPanel({ task, onToggle, onReset, onDone }: Props) {
   return (
     <section aria-label="Task stopwatch" class="rounded-[28px] border border-line/70 bg-surface p-4 shadow-xl shadow-black/20 sm:p-6 [@media(hover:hover)]:bg-surface/80 [@media(hover:hover)]:backdrop-blur">
       <div class="flex min-h-11 items-center justify-center">
-        {task ? (
+        {loading ? (
+          <span class="skeleton h-9 w-44 rounded-full bg-surface-high" role="status" aria-label="Loading task" />
+        ) : task ? (
           <p class="inline-flex max-w-full items-center gap-2 rounded-full bg-surface-high px-3.5 py-2 text-sm font-medium">
             <span aria-hidden="true" class={`size-2 shrink-0 rounded-full bg-accent ${running ? 'animate-glow' : ''}`} />
             <span class="truncate">{plainText(task.text)}</span>
@@ -66,7 +70,7 @@ export function TimerPanel({ task, onToggle, onReset, onDone }: Props) {
           <p role="timer" aria-live="off" class={`leading-none font-semibold tracking-tight tabular-nums ${total >= 3_600_000 ? 'text-5xl sm:text-[3.25rem]' : 'text-[3.5rem] sm:text-[4rem]'}`}>
             {formatClock(total)}
           </p>
-          <p class="text-sm text-muted">{running ? `This run ${formatClock(run)}` : status}</p>
+          {loading ? <span class="skeleton h-4 w-24 rounded-full bg-surface-high" /> : <p class="text-sm text-muted">{running ? `This run ${formatClock(run)}` : status}</p>}
           {timing?.start && <p class="text-xs text-muted tabular-nums">Span {formatDuration(timing.spanMs, false)}{pauses}</p>}
         </div>
       </div>
@@ -78,7 +82,7 @@ export function TimerPanel({ task, onToggle, onReset, onDone }: Props) {
         <button
           type="button"
           onClick={onToggle}
-          disabled={!task}
+          disabled={!task || loading}
           aria-label={action}
           title={`${action} (Space)`}
           class="press state-layer grid size-[72px] place-items-center rounded-full bg-accent text-on-accent shadow-lg shadow-[color-mix(in_oklab,var(--color-accent)_35%,transparent)] disabled:opacity-40 disabled:shadow-none"

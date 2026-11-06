@@ -228,6 +228,25 @@ body {
   -webkit-tap-highlight-color: transparent;
 }
 
+/* Loading placeholder: a light band sweeps across by transform only (no paint of the page). Reduced motion stops it at the end frame, where the band is out of view. */
+.skeleton {
+  position: relative;
+  overflow: hidden;
+}
+.skeleton::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(90deg, transparent, color-mix(in oklab, var(--color-fg) 7%, transparent), transparent);
+  animation: skeleton-sweep 1.4s var(--ease-standard) infinite;
+}
+@keyframes skeleton-sweep {
+  to {
+    transform: translateX(100%);
+  }
+}
+
 /* A soft wash of the state colour behind the timer: running or not reads before any text does. */
 .mode-wash {
   background:

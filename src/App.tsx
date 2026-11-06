@@ -1,9 +1,11 @@
 import { useEffect, useRef, useState } from 'preact/hooks';
 import { useClock, useMedia, useStable } from './lib/use-clock.ts';
+import { useDelayed } from './lib/use-delayed.ts';
 import { Avatar } from './components/Avatar.tsx';
 import { Icon } from './components/Icon.tsx';
 import { Reports } from './components/Reports.tsx';
 import { SessionTasks } from './components/SessionTasks.tsx';
+import { CardSkeleton, StatsSkeleton, TasksSkeleton } from './components/Skeleton.tsx';
 import { SettingsDialog } from './components/SettingsDialog.tsx';
 import { StatsView } from './components/StatsView.tsx';
 import { SyncChip } from './components/SyncChip.tsx';
@@ -28,6 +30,7 @@ import {
   type Size,
   type Tag,
 } from './lib/notes.ts';
+import { applyChange, revertChange, snapshot } from './lib/optimistic.ts';
 import { fetchRemoteTargets, pushTargets, sameTargets } from './lib/profile-settings.ts';
 import { setBadge, useInstall, useOnline, useUpdate } from './lib/pwa.ts';
 import { parseSound, SOUND_KEY } from './lib/sound.ts';
@@ -70,10 +73,12 @@ export function App({ user, onSignOut }: { user: User | null; onSignOut: () => v
   // Wide screens show Timer and Tasks together; on a phone only the open screen's heavy parts are mounted.
   const wide = useMedia('(min-width: 1024px)');
   const [load, setLoad] = useState<Load>({ state: 'loading' });
+  const slowLoad = useDelayed(load.state === 'loading');
   const [selectedId, setSelectedId] = useState<string | null>(() => loadPref(SELECTED_KEY));
   const [undo, setUndo] = useState<Undo | null>(null);
   const [toast, setToast] = useState<string | null>(null);
   const timerRef = useRef<HTMLDivElement>(null);
+  const store = useRef<Note[]>([]);
   const [screen, setScreenState] = useState<Screen>(savedScreen);
   const [targets, setTargets] = useState(loadTargets);
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -131,7 +136,7 @@ export function App({ user, onSignOut }: { user: User | null; onSignOut: () => v
 
   useEffect(() => {
     allNotes()
-      .then((tasks) => setLoad({ state: 'ready', tasks }))
+      .then((tasks) => show(tasks))
       .catch((error: unknown) => {
         console.error('Loading tasks failed', error);
         setLoad({ state: 'error' });
@@ -144,22 +149,33 @@ export function App({ user, onSignOut }: { user: User | null; onSignOut: () => v
   const selected = runningTask ?? tasks.find((n) => n.id === selectedId && n.tag !== 'done') ?? null;
   const running = runningTask !== null;
   const openCount = tasks.filter((t) => t.tag !== 'done').length;
-  const update = (fn: (current: Note[]) => Note[]) =>
-    setLoad((prev) => ({ state: 'ready', tasks: fn(prev.state === 'ready' ? prev.tasks : []) }));
-  const put = (...changed: Note[]) =>
-    update((current) => [...current.filter((n) => !changed.some((c) => c.id === n.id)), ...changed]);
+  // `store` is the same list, readable at once: rapid taps in one frame each build on the last (state alone would lag a render).
+  const show = (next: Note[]) => {
+    store.current = next;
+    setLoad({ state: 'ready', tasks: next });
+  };
+  const put = (...changed: Note[]) => show(applyChange(store.current, changed));
   const select = (id: string | null) => {
     setSelectedId(id);
     savePref(SELECTED_KEY, id ?? '');
   };
 
-  async function save(changed: Note[], undoable?: Undo) {
+  /**
+   * Optimistic: the screen changes in the same frame as the tap; the device write follows in the background.
+   * If the write fails, only the notes still showing this attempt go back as they were (later edits stay), and Undo for it goes away.
+   */
+  async function save(changed: Note[], undoable?: Undo): Promise<boolean> {
+    const before = snapshot(store.current, changed);
+    put(...changed);
+    if (undoable) setUndo(undoable);
     try {
       await Promise.all(changed.map(saveNote));
-      put(...changed);
-      if (undoable) setUndo(undoable);
+      return true;
     } catch {
+      show(revertChange(store.current, changed, before));
+      if (undoable) setUndo((u) => (u === undoable ? null : u));
       setToast('Could not save on this device');
+      return false;
     }
   }
 
@@ -179,7 +195,7 @@ export function App({ user, onSignOut }: { user: User | null; onSignOut: () => v
     playToggle(); // the same chime for start, resume and pause
     if (note.startedAt) return void save([stopTimer(note, at)]);
     select(note.id);
-    void save(startTimer(tasks, note.id, at, dayKey(at, timeZone)));
+    void save(startTimer(store.current, note.id, at, dayKey(at, timeZone)));
   }
 
   const toggle = useStable(() => selected && toggleTimer(selected));
@@ -237,13 +253,12 @@ export function App({ user, onSignOut }: { user: User | null; onSignOut: () => v
     }
     const at = new Date();
     const note: Note = { id: crypto.randomUUID(), ...draft, quadrant: 'unsorted', size, createdAt: at.toISOString(), day: dayKey(at, timeZone) };
-    await saveNote(note);
-    put(note);
-    if (focus && draft.tag !== 'done') {
-      select(note.id);
-      await save(startTimer([...tasks, note], note.id, at, dayKey(at, timeZone)));
-    }
+    const start = focus && draft.tag !== 'done';
+    if (start) select(note.id);
     if (draft.tag === 'done') setToast('Added as done');
+    // The row (already running, if asked) shows now; the composer restores the text if the write fails.
+    const changed = start ? startTimer([...store.current, note], note.id, at, dayKey(at, timeZone)) : [note];
+    if (!(await save(changed))) throw new Error('Could not save on this device');
   }
 
   const setStatus = (note: Note, tag: Tag) => {
@@ -263,11 +278,14 @@ export function App({ user, onSignOut }: { user: User | null; onSignOut: () => v
   };
 
   async function remove(note: Note) {
+    const undoable: Undo = { message: 'Task deleted', before: note };
+    show(store.current.filter((n) => n.id !== note.id));
+    setUndo(undoable);
     try {
       await deleteNote(note.id);
-      update((current) => current.filter((n) => n.id !== note.id));
-      setUndo({ message: 'Task deleted', before: note });
     } catch {
+      put(note);
+      setUndo((u) => (u === undoable ? null : u));
       setToast('Could not save on this device');
     }
   }
@@ -275,9 +293,15 @@ export function App({ user, onSignOut }: { user: User | null; onSignOut: () => v
   async function restore() {
     if (!undo) return;
     const { before } = undo;
-    await saveNote(before);
-    put(before);
+    const current = store.current.find((n) => n.id === before.id);
     setUndo(null);
+    put(before);
+    try {
+      await saveNote(before);
+    } catch {
+      show(current ? [...store.current.filter((n) => n.id !== before.id), current] : store.current.filter((n) => n.id !== before.id));
+      setToast('Could not save on this device');
+    }
   }
 
   useEffect(() => {
@@ -392,7 +416,7 @@ export function App({ user, onSignOut }: { user: User | null; onSignOut: () => v
             {load.state === 'ready' ? (
               <StatsView tasks={tasks} today={today} timeZone={timeZone} targets={targets} onEditTargets={() => setSettingsOpen(true)} onToast={setToast} />
             ) : (
-              <div class="h-96 animate-pulse rounded-[28px] bg-surface" aria-label="Loading stats" />
+              <StatsSkeleton visible={slowLoad} />
             )}
           </main>
         )}
@@ -403,6 +427,7 @@ export function App({ user, onSignOut }: { user: User | null; onSignOut: () => v
           <div ref={timerRef} class={screen === 'tasks' ? 'hidden lg:block' : ''}>
             <TimerPanel
               task={selected}
+              loading={load.state === 'loading'}
               onToggle={toggle}
               onReset={() => selected && void save([resetTimer(selected)], { message: 'Timer reset to 00:00', before: selected })}
               onDone={() => selected && void setStatus(selected, 'done')}
@@ -410,7 +435,7 @@ export function App({ user, onSignOut }: { user: User | null; onSignOut: () => v
           </div>
 
           <div class={`lg:row-span-2 ${screen === 'timer' ? 'hidden lg:block' : ''}`}>
-            {load.state === 'loading' && <div class="h-96 animate-pulse rounded-[28px] bg-surface" aria-label="Loading tasks" />}
+            {load.state === 'loading' && <TasksSkeleton visible={slowLoad} />}
             {load.state === 'error' && (
               <p role="alert" class="rounded-[28px] bg-surface p-5 text-error">
                 Could not open this device's storage. Private mode can block it; try a normal window.
@@ -433,7 +458,8 @@ export function App({ user, onSignOut }: { user: User | null; onSignOut: () => v
           </div>
 
           <div class={`lg:col-start-1 ${screen === 'tasks' ? 'hidden lg:block' : ''}`}>
-            {(wide || screen === 'timer') && <Reports today={today} tasks={tasks} onToast={setToast} />}
+            {(wide || screen === 'timer') &&
+              (load.state === 'ready' ? <Reports today={today} tasks={tasks} onToast={setToast} /> : load.state === 'loading' && <CardSkeleton visible={slowLoad} />)}
           </div>
         </main>
 

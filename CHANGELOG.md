@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-11-06 14:30
+
+- perf(instant): **taps answer in the same frame.** Add, Start / Pause, status, move, size, delete and Undo change the screen first and write to the device in the background (`save` / `add` / `remove` / `restore` in `App.tsx`). If a write fails, only the tasks still showing that attempt go back as they were (later edits stay), its Undo goes away and a toast says so; a failed add puts the text back in the field. Pure rules in `src/lib/optimistic.ts` (tested)
+- change(composer): the field clears as soon as you add (the task is on the list at once); it no longer disables the buttons while saving
+- feat(loading): **skeleton screens** that match the real layout (task rows in quadrants, Stats cards, the Standup card, the timer's task pill and status line) with a transform-only shimmer. They stay invisible for the first 150 ms (`useDelayed`), so a fast load shows nothing and a slow one fades in; no empty "Pick a task" / empty standup flash while tasks load. Reduced motion stops the shimmer
+- measured with every device write delayed 200 ms (a slow phone): add 205 -> 4 ms, Start 224 -> 10 ms, Done 212 -> 19 ms before the first visual change. Spec: `docs/features/instant-feedback/feature.md`
+
 ## 2026-11-06 12:00
 
 - perf(render): **a tick no longer re-renders the app.** The one-second clock moved out of `App` into a shared ticker (`src/lib/clock.ts`, pure and tested; `useClock` in `src/lib/use-clock.ts`). Only the running row, the stopwatch, the mini player, the tab title and (on Stats) the stats subscribe, so with 100 tasks a tick touches one row instead of the whole tree

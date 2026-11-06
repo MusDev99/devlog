@@ -13,7 +13,6 @@ export function Composer({ onAdd }: Props) {
   const [text, setText] = useState('');
   const [size, setSize] = useState<Size>(1);
   const [error, setError] = useState<string | null>(null);
-  const [saving, setSaving] = useState(false);
   const speech = useSpeech((heard) => setText((t) => (t ? `${t} ${heard}` : heard)));
 
   async function submit(focus: boolean) {
@@ -22,15 +21,13 @@ export function Composer({ onAdd }: Props) {
     const problem = validateDraft(draft);
     setError(problem);
     if (problem) return;
-    setSaving(true);
+    // The task shows on the list at once, so the field clears at once; if the write fails the text comes back.
+    setText('');
     try {
       await onAdd(draft, size, focus);
-      // Clear only what was saved: anything typed while saving stays in the field.
-      setText((current) => (current.startsWith(sent) ? current.slice(sent.length).trimStart() : current));
     } catch {
+      setText((current) => (current ? `${sent} ${current}` : sent));
       setError('Could not save on this device. Your text is still here, try again.');
-    } finally {
-      setSaving(false);
     }
   }
 
@@ -77,11 +74,10 @@ export function Composer({ onAdd }: Props) {
         </div>
         <button
           type="button"
-          disabled={saving}
           onClick={() => void submit(true)}
           aria-label="Add and start timer"
           title="Add and start timer"
-          class={`${square} ml-auto bg-surface-high text-accent disabled:opacity-60 sm:ml-0`}
+          class={`${square} ml-auto bg-surface-high text-accent sm:ml-0`}
         >
           <Icon name="play" class="size-5" />
         </button>
@@ -100,7 +96,7 @@ export function Composer({ onAdd }: Props) {
             </option>
           ))}
         </select>
-        <button type="submit" disabled={saving} aria-label="Add task" class={`${square} bg-accent text-on-accent shadow-md disabled:opacity-60`}>
+        <button type="submit" aria-label="Add task" class={`${square} bg-accent text-on-accent shadow-md`}>
           <Icon name="add" class="size-6" />
         </button>
       </div>
