@@ -19,9 +19,11 @@ import {
 } from '../lib/stats.ts';
 import { taskTiming } from '../lib/timing.ts';
 import { useClock } from '../lib/use-clock.ts';
+import { sizing, streams } from '../lib/work.ts';
 import { ActivityCalendar } from './ActivityCalendar.tsx';
 import { Icon, type IconName } from './Icon.tsx';
 import { PLACE_NAMES, PLACE_TONE } from './TaskRow.tsx';
+import { SizingCheck, TicketTime } from './WorkStats.tsx';
 
 type Props = { tasks: Note[]; today: string; timeZone: string; targets: Targets; onEditTargets: () => void; onToast: (message: string) => void };
 
@@ -39,7 +41,7 @@ const TILE = 'rounded-2xl bg-surface-high/80 px-3.5 py-3';
 export function StatsView({ tasks, today, timeZone, targets, onEditTargets, onToast }: Props) {
   // Ticks only while a stopwatch runs; with none running the numbers are computed once per change.
   const nowMs = useClock(tasks.some((t) => t.startedAt));
-  const { days, todayStat, week, review, split, notes, activeStreak, targetStreak } = useMemo(() => {
+  const { days, todayStat, week, review, split, notes, activeStreak, targetStreak, tickets, sized } = useMemo(() => {
     const days = dayStats(tasks, nowMs, timeZone);
     return {
       days,
@@ -47,6 +49,8 @@ export function StatsView({ tasks, today, timeZone, targets, onEditTargets, onTo
       week: series(days, today, 7),
       review: weeklyReview(days, today),
       split: breakdown(tasks, nowMs, timeZone, today),
+      tickets: streams(tasks, nowMs, timeZone, today),
+      sized: sizing(tasks, nowMs, today),
       notes: insights(tasks, nowMs, timeZone, today, targets),
       activeStreak: streak(days, today, isActive),
       targetStreak: streak(days, today, onTarget(targets)),
@@ -154,6 +158,10 @@ export function StatsView({ tasks, today, timeZone, targets, onEditTargets, onTo
           </ul>
         )}
       </section>
+
+      <TicketTime data={tickets} />
+
+      <SizingCheck data={sized} />
     </div>
   );
 }
@@ -307,7 +315,7 @@ function Breakdown({ split }: { split: ReturnType<typeof breakdown> }) {
           </ul>
 
           <h3 class="mt-5 text-[11px] font-semibold tracking-wider text-muted uppercase">By task</h3>
-          <ul class="mt-2 grid gap-2.5">
+          <ul class="mt-2 grid grid-cols-[minmax(0,1fr)] gap-2.5">
             {split.tasks.slice(0, 8).map((t) => (
               <li key={t.note.id}>
                 <div class="flex items-baseline gap-2 text-sm">

@@ -3,17 +3,21 @@ import { loadPref, savePref } from '../lib/db.ts';
 import { buzz } from '../lib/haptics.ts';
 import { plainText } from '../lib/links.ts';
 import { doneBucket, listView, places, progressCount } from '../lib/matrix.ts';
-import { PLACES, placeOf, QUADRANT_LABELS, type Draft, type Note, type Place, type Size } from '../lib/notes.ts';
+import { PLACES, placeOf, QUADRANT_LABELS, sizeOf, type Draft, type Note, type Place, type Size } from '../lib/notes.ts';
 import { Composer } from './Composer.tsx';
 import { DoneBucket } from './DoneBucket.tsx';
 import { Icon } from './Icon.tsx';
 import { useStable } from '../lib/use-clock.ts';
+import { dragState } from '../lib/use-swipe.ts';
+import { RowSheet } from './RowSheet.tsx';
 import { PLACE_TONE, TaskRow, type RowActions } from './TaskRow.tsx';
 
-type Props = RowActions & {
+type Props = Omit<RowActions, 'onMenu'> & {
   tasks: Note[];
   today: string;
   focusId: string | null;
+  /** The daily story-point target, shown against today's finished points. */
+  targetPoints: number;
   onAdd: (draft: Draft, size: Size, focus: boolean) => Promise<void>;
 };
 
@@ -35,6 +39,16 @@ function placeAt(x: number, y: number): Target | null {
 /** The drag ghost is centred on the pointer and tilted; moving it is a transform only (no layout). */
 const ghostAt = (x: number, y: number) => `translate3d(${x}px, ${y}px, 0) translate(-50%, -50%) rotate(2deg)`;
 
+const COLLAPSED_KEY = 'devlog.collapsed';
+const savedCollapsed = (): Place[] => {
+  try {
+    const value: unknown = JSON.parse(loadPref(COLLAPSED_KEY) ?? '[]');
+    return Array.isArray(value) ? value.filter((p): p is Place => PLACES.includes(p as Place)) : [];
+  } catch {
+    return [];
+  }
+};
+
 const savedView = (): View => (loadPref(VIEW_KEY) === 'list' ? 'list' : 'matrix');
 
 /**
@@ -42,9 +56,11 @@ const savedView = (): View => (loadPref(VIEW_KEY) === 'list' ? 'list' : 'matrix'
  * Drag a row with the mouse, or long-press then drag on touch (a plain swipe still scrolls);
  * the row menu moves it without dragging.
  */
-export function SessionTasks({ tasks, today, focusId, onAdd, ...actions }: Props) {
+export function SessionTasks({ tasks, today, focusId, targetPoints, onAdd, ...actions }: Props) {
   const [view, setView] = useState<View>(savedView);
   const [drag, setDrag] = useState<Drag | null>(null);
+  const [menuId, setMenuId] = useState<string | null>(null);
+  const [collapsed, setCollapsed] = useState(savedCollapsed);
   const dragRef = useRef<Drag | null>(null);
   const pending = useRef<Pending | null>(null);
   const suppressClick = useRef(false);
@@ -61,6 +77,7 @@ export function SessionTasks({ tasks, today, focusId, onAdd, ...actions }: Props
       onPlace: (note, place) => act.current.onPlace(note, place),
       onSize: (note, size) => act.current.onSize(note, size),
       onDelete: (note) => act.current.onDelete(note),
+      onMenu: (note) => setMenuId(note.id),
     }),
     [],
   );
@@ -71,10 +88,18 @@ export function SessionTasks({ tasks, today, focusId, onAdd, ...actions }: Props
   const arm = () => window.addEventListener('touchmove', guard.current, { passive: false });
   const disarm = () => window.removeEventListener('touchmove', guard.current);
   const { done, total } = useMemo(() => progressCount(tasks, today), [tasks, today]);
+  const points = useMemo(() => tasks.reduce((sum, t) => (t.tag === 'done' && t.day === today ? sum + sizeOf(t) : sum), 0), [tasks, today]);
+  const toggleQuadrant = (place: Place) =>
+    setCollapsed((current) => {
+      const next = current.includes(place) ? current.filter((p) => p !== place) : [...current, place];
+      savePref(COLLAPSED_KEY, JSON.stringify(next));
+      return next;
+    });
 
   const begin = (p: Pending, x: number, y: number) => {
     const d = { note: p.note, x, y, over: placeAt(x, y) };
     dragRef.current = d;
+    dragState.active = true;
     setDrag({ ...d });
     if (p.touch) buzz('grab');
   };
@@ -133,6 +158,7 @@ export function SessionTasks({ tasks, today, focusId, onAdd, ...actions }: Props
       if (frame.current !== null) cancelAnimationFrame(frame.current);
       frame.current = null;
       dragRef.current = null;
+      dragState.active = false;
       setDrag(null);
     };
     const cancel = () => {
@@ -185,7 +211,7 @@ export function SessionTasks({ tasks, today, focusId, onAdd, ...actions }: Props
   const finished = useMemo(() => doneBucket(tasks, today), [tasks, today]);
 
   return (
-    <section aria-labelledby="tasks-title" class={drag ? 'select-none' : ''}>
+    <section aria-labelledby="tasks-title" class={drag ? 'select-none [&_li]:pointer-events-none' : ''}>
       <div class="flex items-center gap-3">
         <div class="min-w-0 flex-1">
           <div class="flex items-baseline gap-2">
@@ -195,6 +221,16 @@ export function SessionTasks({ tasks, today, focusId, onAdd, ...actions }: Props
             <span class="text-sm text-muted tabular-nums" aria-label={`${done} of ${total} done`}>
               {done}/{total}
             </span>
+            {/* Goal-gradient: today's points toward the target; the number pops when it moves. */}
+            {targetPoints > 0 && (
+              <span
+                key={points}
+                aria-label={`${points} of ${targetPoints} story points today`}
+                class={`animate-pop inline-flex items-center gap-1 text-xs font-medium tabular-nums ${points >= targetPoints ? 'text-ok' : 'text-muted'}`}
+              >
+                {points >= targetPoints && <Icon name="check" class="size-3.5" />}· {points}/{targetPoints} SP today
+              </span>
+            )}
           </div>
           {/* Goal-gradient: the bar fills as tasks get done. */}
           <div aria-hidden="true" class="mt-2 h-1 overflow-hidden rounded-full bg-surface-high">
@@ -252,28 +288,39 @@ export function SessionTasks({ tasks, today, focusId, onAdd, ...actions }: Props
               if (v.place === 'unsorted') return null;
               const label = QUADRANT_LABELS[v.place];
               const tone = PLACE_TONE[v.place];
+              const shut = collapsed.includes(v.place);
+              // A phone does not need 160 px of empty box: only a quadrant with tasks gets height there.
+              const tall = v.tasks.length > 0 && !shut ? 'min-h-40' : '';
               return (
                 <section
                   key={v.place}
                   data-drop={v.place}
                   aria-labelledby={`q-${v.place}`}
-                  class={`flex min-h-40 flex-col rounded-2xl p-2.5 transition-[outline-color] md:min-h-56 lg:min-h-[clamp(14rem,30vh,22rem)] ${tone.tint} ${ring(v.place)}`}
+                  class={`flex flex-col rounded-2xl p-2.5 transition-[outline-color] ${tall} md:min-h-56 lg:min-h-[clamp(14rem,30vh,22rem)] ${tone.tint} ${ring(v.place)}`}
                 >
-                  <header class="flex items-center justify-between gap-2 px-1.5 pt-0.5 pb-2" title={label.hint}>
-                    <h3 id={`q-${v.place}`} class="flex min-w-0 items-center gap-2 text-sm font-semibold">
-                      <span aria-hidden="true" class={`size-2 shrink-0 rounded-full ${tone.dot}`} />
-                      <span class={tone.text}>{label.name}</span>
-                      <span class="truncate text-xs font-normal text-muted">
-                        {label.badge}
-                        <span class="hidden sm:inline"> · {label.hint}</span>
-                      </span>
+                  <header class="flex items-center justify-between gap-2 px-1.5 pb-1" title={label.hint}>
+                    <h3 id={`q-${v.place}`} class="min-w-0 text-sm font-semibold">
+                      <button
+                        type="button"
+                        onClick={() => toggleQuadrant(v.place)}
+                        aria-expanded={!shut}
+                        class="press flex min-h-11 min-w-0 items-center gap-2 rounded-lg pr-1 text-left"
+                      >
+                        <span aria-hidden="true" class={`size-2 shrink-0 rounded-full ${tone.dot}`} />
+                        <span class={tone.text}>{label.name}</span>
+                        <span class="truncate text-xs font-normal text-muted">
+                          {label.badge}
+                          <span class="hidden sm:inline"> · {label.hint}</span>
+                        </span>
+                        <Icon name="expand" class={`size-5 shrink-0 text-muted transition-transform duration-200 ${shut ? '-rotate-90' : ''}`} />
+                      </button>
                     </h3>
                     <span class="shrink-0 text-xs text-muted tabular-nums" aria-label={`${v.open} open, ${v.points} story points`}>
                       {v.open > 0 ? `${v.open} · ${v.points} SP` : ''}
                     </span>
                   </header>
-                  {v.tasks.length === 0 ? (
-                    <p class="grid flex-1 place-items-center rounded-xl border border-dashed border-line/70 px-3 py-4 text-center text-xs text-muted">Drag a task here</p>
+                  {shut ? null : v.tasks.length === 0 ? (
+                    <p class="grid flex-1 place-items-center rounded-xl border border-dashed border-line/70 px-3 py-3 text-center text-xs text-muted">Drag a task here</p>
                   ) : (
                     <ul class="grid gap-1.5">{v.tasks.map((n) => row(n))}</ul>
                   )}
@@ -283,6 +330,15 @@ export function SessionTasks({ tasks, today, focusId, onAdd, ...actions }: Props
           </div>
         </>
       )}
+
+      <RowSheet
+        note={tasks.find((t) => t.id === menuId) ?? null}
+        onClose={() => setMenuId(null)}
+        onPlace={actions.onPlace}
+        onStatus={actions.onStatus}
+        onSize={actions.onSize}
+        onDelete={actions.onDelete}
+      />
 
       <DoneBucket
         recent={finished.recent}

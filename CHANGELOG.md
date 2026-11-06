@@ -1,5 +1,36 @@
 # Changelog
 
+## 2026-11-06 21:00
+
+- feat(stats): **Time by ticket or repo** (last 7 days): tracked time grouped by the first link in each task, a Jira ticket (`SKYIQ-10143`) or a GitHub repo (PRs and issues of one repo add up), largest first, with tasks, done count, points and the share of time that has a link; the label opens the ticket. `sourceOf` in `src/lib/links.ts`, `streams` in `src/lib/work.ts`
+- feat(stats): **Sizing check** (last 4 weeks): average time of finished, timed tasks per story-point size, and a plain verdict: bigger sizes take longer (points track effort), or "an 8 SP task took less time than a 5 SP one: re-size after finishing". `sizing` in `src/lib/work.ts`
+- feat(insights): **work-in-progress warning** when three or more tasks are in Doing ("finish one before starting another"), shown first
+- fix(stats): the "By task" list could push the Stats page wider than a 375 px screen when a task title was long (a grid column sized to its text); it now uses `minmax(0, 1fr)` like the other lists
+- Already covered by Stats, so not repeated: planned (Schedule) versus reactive (Do now) share of time, and pace per story point per task ("Where your time went"). Spec: `docs/features/dev-metrics/feature.md`
+
+## 2026-11-06 19:00
+
+- feat(tasks): **one bottom sheet for a task's actions** (`RowSheet.tsx`, a native modal dialog: focus trapped, Esc closes, tap outside closes) replaces the menu that expanded inside each row and pushed the list down. Move to, Story points (stays open so you see the change), Status, Delete. Opens from the ⋯ button or a left swipe
+- feat(tasks): **less on every row**: only the first link shows, the rest sit behind a `+n` chip (tap to show all); the place label no longer repeats "Unsorted" on every List row; rows keep tick, title, points, Start and ⋯
+- feat(tasks): **quadrants collapse** (tap the header; remembered per device); an empty quadrant on a phone is a slim drop strip instead of a 160 px box
+- feat(composer): **the add field is quiet until you use it**: size and ▶ appear on focus or once there is text (always visible from 640 px wide)
+- feat(tasks): **today's points toward your target** next to the Tasks title (`8/10 SP today`, turns green with a check at the target); the number pops when it changes
+- Spec: `docs/features/declutter/feature.md`
+
+## 2026-11-06 17:00
+
+- feat(gestures): **swipe a task row on a phone.** Swipe right to finish it (or reopen a done one), swipe left for its actions. The row follows the finger by transform only, with a green Done / accent More layer behind it, a faint buzz when you pass the point where letting go acts, a rubber-band past it, a flick commits early, and a short swipe springs back. Vertical movement is never touched, so scrolling stays the browser's (`touch-action: pan-y pinch-zoom`); pinch zoom still works. Mouse users still drag, and every action keeps its button (the tick, the ⋯ menu), so the swipe is a shortcut and never the only way
+- Rules (`src/lib/swipe.ts`, pure, 9 tests): axis lock after 8 px (a diagonal stays a scroll), threshold 30% of the row (72-160 px), 1:1 then 35%, a direction with no action resists to 24 px. `src/lib/use-swipe.ts` applies them; a long-press drag and a swipe never start together (`dragState`)
+- perf(drag): rows ignore the pointer while a task is dragged (no hover restyle on every move); drag cost 14-19 -> 11-16 ms per move at 4x throttle
+- change(row): rows are opaque (`bg-surface-high`) so the layer behind never shows through
+
+## 2026-11-06 14:30
+
+- perf(instant): **taps answer in the same frame.** Add, Start / Pause, status, move, size, delete and Undo change the screen first and write to the device in the background (`save` / `add` / `remove` / `restore` in `App.tsx`). If a write fails, only the tasks still showing that attempt go back as they were (later edits stay), its Undo goes away and a toast says so; a failed add puts the text back in the field. Pure rules in `src/lib/optimistic.ts` (tested)
+- change(composer): the field clears as soon as you add (the task is on the list at once); it no longer disables the buttons while saving
+- feat(loading): **skeleton screens** that match the real layout (task rows in quadrants, Stats cards, the Standup card, the timer's task pill and status line) with a transform-only shimmer. They stay invisible for the first 150 ms (`useDelayed`), so a fast load shows nothing and a slow one fades in; no empty "Pick a task" / empty standup flash while tasks load. Reduced motion stops the shimmer
+- measured with every device write delayed 200 ms (a slow phone): add 205 -> 4 ms, Start 224 -> 10 ms, Done 212 -> 19 ms before the first visual change. Spec: `docs/features/instant-feedback/feature.md`
+
 ## 2026-11-06 12:00
 
 - perf(render): **a tick no longer re-renders the app.** The one-second clock moved out of `App` into a shared ticker (`src/lib/clock.ts`, pure and tested; `useClock` in `src/lib/use-clock.ts`). Only the running row, the stopwatch, the mini player, the tab title and (on Stats) the stats subscribe, so with 100 tasks a tick touches one row instead of the whole tree
