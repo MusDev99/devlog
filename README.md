@@ -26,6 +26,7 @@ Sign in with Google, time each task (actual vs span), sort them on an urgent × 
 | ✨ Animated sign-in page: a looping product story (sorting, timing, points, sync) in CSS, no GIF | ✅ v2.7 |
 | ✅ Done bucket: finished tasks leave the matrix and can be restored | ✅ v2.8 |
 | 🔗 Links in tasks: Jira URLs show as their key (SKYIQ-10143), click to open | ✅ v2.8 |
+| 🎫 Set your Jira site in Settings and a bare key (SKYIQ-10143) in a task links to it; per profile, like targets | ✅ |
 | 📅 Last 12 weeks calendar: tap a day to see what you worked on | ✅ v2.9 |
 | 📄 CSV report download (12 weeks or one day), built on the device | ✅ v2.9 |
 | 🖥️ Full-width layout on large screens, taller quadrants | ✅ v2.9 |
@@ -49,7 +50,7 @@ Node 22.18+ (tests run TypeScript directly with `node --test`).
 | `src/components/` | `TimerPanel` (stopwatch ring), `SessionTasks` (List / Matrix, Unsorted, drag), `TaskRow` (Start/Stop per task), `Composer` (add row), `Reports` (Standup / Week), `StatsView`, `SettingsDialog` (daily targets), `Icon` |
 | `src/styles.css` | Material Design 3 colour roles as Tailwind `@theme` tokens, `state-layer` utility |
 | `api/auth/*`, `api/_lib/auth.ts` | Google sign-in (OIDC + PKCE), signed session cookie |
-| `api/_lib/sheets.ts`, `api/tasks.ts`, `api/settings.ts` | Google Sheets as a service account (RAW writes): Users tab (incl. per-profile targets), Tasks tab upsert |
+| `api/_lib/sheets.ts`, `api/tasks.ts`, `api/settings.ts`, `api/jira.ts` | Google Sheets as a service account (RAW writes): Users tab (incl. per-profile targets and Jira site), Tasks tab upsert |
 | `tests/golden/` | Standup golden set (10 note days): the rules keep every blocker and invent nothing |
 | `src/lib/` | Pure logic (`notes.ts` incl. the stopwatch, `matrix.ts`, `stats.ts`, `standup.ts`, `recap.ts`, `today.ts`), `db.ts` (IndexedDB, the only storage module), `speech.ts`, PWA helpers |
 | `public/sw.js`, `public/sw-policy.js` | Service worker and its tested routing rules |

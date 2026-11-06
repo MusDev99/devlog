@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-11-06 23:00
+
+- feat(links): **type a Jira key and it links.** Set your **Jira site** in Settings (`yourteam.atlassian.net`, or paste any page on it); a bare key like `SKYIQ-10143` in a task then becomes the same chip as a pasted Jira URL (`<site>/browse/SKYIQ-10143`), the title drops it, and Stats groups time by that ticket. Nothing changes until a site is set
+- Only an https origin is ever stored: `normalizeJiraBase` turns "airasia.atlassian.net" or any page on the site into `https://airasia.atlassian.net`, and refuses http, logins in the URL, `javascript:` and hosts without a dot (rules in `src/lib/jira.ts`, import-free, validated on the device and on the server)
+- Keys are matched narrowly so ordinary text is left alone: 2-10 capitals/digits, a dash, 1-6 digits, not inside words, paths or other keys, and not look-alikes such as `UTF-8`, `SHA-256`, `ISO-8601`, `COVID-19`
+- The Jira site is **per profile**, like daily targets: new `jira_base_url` column (J) in the Users sheet (an older tab gains the header, rows untouched), `GET` / `PUT /api/jira` (same generic handler as `/api/settings`, now with a `field` name; PUT same-origin only), cached per account on the device; an unconfirmed change goes up first, otherwise the profile's value wins (an empty one clears it)
+- Not stored in tasks: task text is still kept as typed, so clearing the site turns the links back into plain text
+
 ## 2026-11-06 21:00
 
 - feat(stats): **Time by ticket or repo** (last 7 days): tracked time grouped by the first link in each task, a Jira ticket (`SKYIQ-10143`) or a GitHub repo (PRs and issues of one repo add up), largest first, with tasks, done count, points and the share of time that has a link; the label opens the ticket. `sourceOf` in `src/lib/links.ts`, `streams` in `src/lib/work.ts`

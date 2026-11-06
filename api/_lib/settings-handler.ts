@@ -1,5 +1,6 @@
 /**
- * /api/settings: a person's daily targets, kept in their Users row so they follow them to every device.
+ * /api/settings and /api/jira: one per-person setting (daily targets, or the Jira site) kept in their Users row so it follows
+ * them to every device. `field` names the JSON key; the validation and cell mapping are injected.
  * Everything it needs is injected (no relative imports), so tests run it without Google.
  */
 
@@ -9,7 +10,9 @@ export type SettingsDeps<T> = {
   isSameOrigin: (request: Request) => boolean;
   readUser: (request: Request) => Promise<{ email: string } | null>;
   allow: (key: string, nowMs: number) => boolean;
-  /** Validation and cell mapping (src/lib/targets.ts). */
+  /** The JSON key in the request and response body. Defaults to `targets`. */
+  field?: string;
+  /** Validation and cell mapping (src/lib/targets.ts, src/lib/jira.ts). */
   isValid: (value: unknown) => value is T;
   fromCells: (cells: string[]) => T | null;
   toCells: (value: T) => string[];
@@ -22,6 +25,7 @@ const json = (status: number, body: unknown) =>
   new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json', 'cache-control': 'no-store' } });
 
 export async function handleSettings<T>(request: Request, deps: SettingsDeps<T>): Promise<Response> {
+  const field = deps.field ?? 'targets';
   if (request.method !== 'GET' && request.method !== 'PUT') return json(405, { error: 'method' });
   if (!deps.configured) return json(503, { error: 'unavailable' });
   if (request.method === 'PUT' && !deps.isSameOrigin(request)) return json(403, { error: 'forbidden' });
@@ -33,7 +37,7 @@ export async function handleSettings<T>(request: Request, deps: SettingsDeps<T>)
   try {
     if (request.method === 'GET') {
       const cells = await deps.read(user.email);
-      return json(200, { targets: cells ? deps.fromCells(cells) : null });
+      return json(200, { [field]: cells ? deps.fromCells(cells) : null });
     }
     const text = await request.text();
     if (text.length > 1_000) return json(413, { error: 'too_large' });
@@ -43,9 +47,9 @@ export async function handleSettings<T>(request: Request, deps: SettingsDeps<T>)
     } catch {
       return json(400, { error: 'json' });
     }
-    const targets = (body as { targets?: unknown } | null)?.targets;
-    if (!deps.isValid(targets)) return json(400, { error: 'invalid' });
-    return (await deps.write(user.email, deps.toCells(targets))) ? json(200, { ok: true, targets }) : json(404, { error: 'not_registered' });
+    const value = (body as Record<string, unknown> | null)?.[field];
+    if (!deps.isValid(value)) return json(400, { error: 'invalid' });
+    return (await deps.write(user.email, deps.toCells(value))) ? json(200, { ok: true, [field]: value }) : json(404, { error: 'not_registered' });
   } catch (error) {
     console.error('Settings sheet call failed', error instanceof Error ? error.message : 'unknown');
     return json(502, { error: 'sheet_error' });

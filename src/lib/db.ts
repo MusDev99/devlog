@@ -1,3 +1,4 @@
+import { isJiraBase } from './jira.ts';
 import { isNote, type Note } from './notes.ts';
 import type { SyncState } from './sync.ts';
 import { DEFAULT_TARGETS, isTargets, type Targets } from './targets.ts';
@@ -183,6 +184,25 @@ export function saveTargets(targets: Targets, pending = false): void {
 
 /** True when this profile changed its targets and the sheet has not confirmed them (offline save). */
 export const targetsPending = () => account !== null && loadPref(pendingKey()) === '1';
+
+const JIRA_KEY = 'devlog.jira';
+const jiraKey = () => `${JIRA_KEY}:${account ?? ''}`;
+const jiraPendingKey = () => `devlog.jira-pending:${account ?? ''}`;
+
+/** This profile's Jira site (an https origin) cached on the device, or '' for none. */
+export function loadJira(): string {
+  const value = loadPref(jiraKey());
+  return isJiraBase(value) ? value : '';
+}
+
+/** Cache this profile's Jira site. `pending` marks a change the Users sheet has not confirmed yet. */
+export function saveJira(value: string, pending = false): void {
+  savePref(jiraKey(), value);
+  if (account) savePref(jiraPendingKey(), pending ? '1' : '');
+}
+
+/** True when this profile changed its Jira site and the sheet has not confirmed it (offline save). */
+export const jiraPending = () => account !== null && loadPref(jiraPendingKey()) === '1';
 
 const USER_KEY = 'devlog.user';
 /** `picture`: the Google profile photo URL ('' when there is none). */

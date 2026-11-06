@@ -17,8 +17,39 @@ export function linkLabel(url: URL): string {
   return short.length > 32 ? `${short.slice(0, 31)}…` : short;
 }
 
-/** Split text into plain parts and http(s) links. Anything that is not a valid http(s) URL stays text. */
-export function splitLinks(text: string): Part[] {
+/** The person's Jira site (an https origin) or null. Set once from the profile; bare issue keys link to it. */
+let currentBase: string | null = null;
+export const setJiraBase = (base: string | null): void => {
+  currentBase = base ? base : null;
+};
+
+/** A Jira issue key on its own: 2-10 capitals/digits, a dash, 1-6 digits. The prefix group stops it matching inside words, paths and other keys. */
+const KEY_RE = /(^|[^A-Za-z0-9_/.-])([A-Z][A-Z0-9]{1,9}-\d{1,6})(?![A-Za-z0-9_-])/g;
+/** Look like issue keys but are not (standards, encodings, versions): never linked. */
+const NOT_JIRA = new Set(['UTF', 'ISO', 'SHA', 'MD', 'AES', 'RSA', 'TLS', 'SSL', 'RFC', 'CVE', 'COVID', 'HTTP', 'PDF', 'USB', 'GPT', 'CRC', 'TCP', 'UDP', 'IPV', 'WPA', 'ES', 'MP']);
+
+function expandKeys(text: string, base: string): Part[] {
+  const out: Part[] = [];
+  let last = 0;
+  for (const m of text.matchAll(KEY_RE)) {
+    const key = m[2] ?? '';
+    if (NOT_JIRA.has(key.slice(0, key.indexOf('-')))) continue;
+    const at = (m.index ?? 0) + (m[1]?.length ?? 0);
+    if (at > last) out.push({ kind: 'text', value: text.slice(last, at) });
+    out.push({ kind: 'link', href: `${base}/browse/${key}`, label: key });
+    last = at + key.length;
+  }
+  if (last < text.length) out.push({ kind: 'text', value: text.slice(last) });
+  return out;
+}
+
+/** Split text into plain parts and links: http(s) URLs always, and bare Jira keys when a Jira site is set. Anything else stays text. */
+export function splitLinks(text: string, base: string | null = currentBase): Part[] {
+  const parts = splitUrls(text);
+  return base ? parts.flatMap((p) => (p.kind === 'text' ? expandKeys(p.value, base) : [p])) : parts;
+}
+
+function splitUrls(text: string): Part[] {
   const parts: Part[] = [];
   let last = 0;
   for (const m of text.matchAll(URL_RE)) {
@@ -40,8 +71,8 @@ export function splitLinks(text: string): Part[] {
 }
 
 /** The task's words without its links (for the title line); falls back to the link labels if that is all there is. */
-export function titleText(text: string): string {
-  const parts = splitLinks(text);
+export function titleText(text: string, base: string | null = currentBase): string {
+  const parts = splitLinks(text, base);
   const words = parts
     .filter((p) => p.kind === 'text')
     .map((p) => (p as { value: string }).value)
@@ -54,14 +85,14 @@ export function titleText(text: string): string {
 }
 
 /** The links in a task, in order, without duplicates. */
-export function linksIn(text: string): { href: string; label: string }[] {
+export function linksIn(text: string, base: string | null = currentBase): { href: string; label: string }[] {
   const seen = new Set<string>();
-  return splitLinks(text).flatMap((p) => (p.kind === 'link' && !seen.has(p.href) && seen.add(p.href) ? [{ href: p.href, label: p.label }] : []));
+  return splitLinks(text, base).flatMap((p) => (p.kind === 'link' && !seen.has(p.href) && seen.add(p.href) ? [{ href: p.href, label: p.label }] : []));
 }
 
 /** Text for places that cannot hold links (timer chip, title bar): each link replaced by its label. */
-export function plainText(text: string): string {
-  return splitLinks(text)
+export function plainText(text: string, base: string | null = currentBase): string {
+  return splitLinks(text, base)
     .map((p) => (p.kind === 'text' ? p.value : p.label))
     .join('')
     .replace(/\s+/g, ' ')
@@ -71,8 +102,8 @@ export function plainText(text: string): string {
 /** Where a task's work lives: its first link, grouped the way a developer thinks (a Jira ticket, a GitHub repo, else a site). */
 export type Source = { kind: 'jira' | 'github' | 'other'; key: string; label: string; href: string };
 
-export function sourceOf(text: string): Source | null {
-  const first = splitLinks(text).find((p) => p.kind === 'link');
+export function sourceOf(text: string, base: string | null = currentBase): Source | null {
+  const first = splitLinks(text, base).find((p) => p.kind === 'link');
   if (!first || first.kind !== 'link') return null;
   const url = new URL(first.href);
   const jira = url.pathname.match(/\/browse\/([A-Z][A-Z0-9_]*-\d+)/) ?? url.searchParams.get('selectedIssue')?.match(/^([A-Z][A-Z0-9_]*-\d+)$/);

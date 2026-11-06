@@ -11,10 +11,10 @@ import { StatsView } from './components/StatsView.tsx';
 import { SyncChip } from './components/SyncChip.tsx';
 import { PLACE_NAMES } from './components/TaskRow.tsx';
 import { TimerPanel } from './components/TimerPanel.tsx';
-import { allNotes, deleteNote, keepStorage, loadPref, loadTargets, saveNote, savePref, saveTargets, targetsPending, type User } from './lib/db.ts';
+import { allNotes, deleteNote, jiraPending, keepStorage, loadJira, loadPref, loadTargets, saveJira, saveNote, savePref, saveTargets, targetsPending, type User } from './lib/db.ts';
 import { buzz, HAPTICS_KEY, parseHaptics, setHaptics } from './lib/haptics.ts';
 import { isScreen, launchParams, type Screen } from './lib/launch.ts';
-import { plainText } from './lib/links.ts';
+import { plainText, setJiraBase } from './lib/links.ts';
 import {
   elapsedMs,
   formatClock,
@@ -31,7 +31,7 @@ import {
   type Tag,
 } from './lib/notes.ts';
 import { applyChange, revertChange, snapshot } from './lib/optimistic.ts';
-import { fetchRemoteTargets, pushTargets, sameTargets } from './lib/profile-settings.ts';
+import { fetchRemoteJira, fetchRemoteTargets, pushJira, pushTargets, sameTargets } from './lib/profile-settings.ts';
 import { setBadge, useInstall, useOnline, useUpdate } from './lib/pwa.ts';
 import { parseSound, SOUND_KEY } from './lib/sound.ts';
 import { playFinish, playToggle, setSounds } from './lib/sounds.ts';
@@ -81,6 +81,16 @@ export function App({ user, onSignOut }: { user: User | null; onSignOut: () => v
   const store = useRef<Note[]>([]);
   const [screen, setScreenState] = useState<Screen>(savedScreen);
   const [targets, setTargets] = useState(loadTargets);
+  // The Jira site makes bare keys (SKYIQ-123) links; `links.ts` reads it, and the task screens re-mount when it changes (key below).
+  const [jira, setJiraState] = useState(() => {
+    const value = loadJira();
+    setJiraBase(value || null);
+    return value;
+  });
+  const applyJira = (value: string) => {
+    setJiraBase(value || null);
+    setJiraState(value);
+  };
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [haptics, setHapticsState] = useState(() => parseHaptics(loadPref(HAPTICS_KEY)));
   const [sound, setSoundState] = useState(() => parseSound(loadPref(SOUND_KEY)));
@@ -106,21 +116,45 @@ export function App({ user, onSignOut }: { user: User | null; onSignOut: () => v
     }
   }
 
+  /** Same idea for the Jira site: an unconfirmed local change goes up first, otherwise the profile's value wins (an empty one clears it). */
+  async function syncJira() {
+    if (!user) return;
+    if (jiraPending()) {
+      const local = loadJira();
+      if (await pushJira(local)) saveJira(local);
+      return;
+    }
+    const remote = await fetchRemoteJira();
+    if (remote.status !== 'ok' || remote.jira === loadJira()) return;
+    saveJira(remote.jira);
+    applyJira(remote.jira);
+  }
+
   useEffect(() => {
     void syncTargets(targets);
-    const again = () => void syncTargets(loadTargets());
+    void syncJira();
+    const again = () => {
+      void syncTargets(loadTargets());
+      void syncJira();
+    };
     window.addEventListener('online', again);
     return () => window.removeEventListener('online', again);
   }, [user?.email]);
 
-  async function saveSettings(next: Targets) {
+  async function saveSettings(next: Targets, nextJira: string) {
+    const jiraChanged = nextJira !== jira;
     setTargets(next);
     saveTargets(next, user !== null);
+    if (jiraChanged) {
+      saveJira(nextJira, user !== null);
+      applyJira(nextJira);
+    }
     setSettingsOpen(false);
-    if (!user) return setToast('Daily targets saved on this device');
-    const ok = await pushTargets(next);
-    if (ok) saveTargets(next);
-    setToast(ok ? 'Saved to your profile' : 'Saved here; it will reach your profile when you are back online');
+    if (!user) return setToast('Settings saved on this device');
+    const [targetsOk, jiraOk] = await Promise.all([pushTargets(next), jiraChanged ? pushJira(nextJira) : Promise.resolve(true)]);
+    if (targetsOk) saveTargets(next);
+    if (jiraChanged && jiraOk) saveJira(nextJira);
+    setToast(targetsOk && jiraOk ? 'Saved to your profile' : 'Saved here; it will reach your profile when you are back online');
   }
   const install = useInstall();
   // Signed in: every change goes to the team's Google Sheet; local-only mode never syncs.
@@ -412,7 +446,7 @@ export function App({ user, onSignOut }: { user: User | null; onSignOut: () => v
         )}
 
         {screen === 'stats' && (
-          <main class="flex-1">
+          <main key={jira} class="flex-1">
             {load.state === 'ready' ? (
               <StatsView tasks={tasks} today={today} timeZone={timeZone} targets={targets} onEditTargets={() => setSettingsOpen(true)} onToast={setToast} />
             ) : (
@@ -422,6 +456,7 @@ export function App({ user, onSignOut }: { user: User | null; onSignOut: () => v
         )}
 
         <main
+          key={jira}
           class={`grid flex-1 grid-cols-[minmax(0,1fr)] gap-5 lg:grid-cols-[minmax(320px,380px)_minmax(0,1fr)] lg:items-start lg:gap-8 2xl:grid-cols-[minmax(360px,420px)_minmax(0,1fr)] ${screen === 'stats' ? 'hidden' : ''}`}
         >
           <div ref={timerRef} class={screen === 'tasks' ? 'hidden lg:block' : ''}>
@@ -479,12 +514,13 @@ export function App({ user, onSignOut }: { user: User | null; onSignOut: () => v
         user={user}
         onSignOut={onSignOut}
         targets={targets}
+        jira={jira}
         haptics={haptics}
         onHaptics={changeHaptics}
         sound={sound}
         onSound={changeSound}
         onClose={() => setSettingsOpen(false)}
-        onSave={(next) => void saveSettings(next)}
+        onSave={(next, nextJira) => void saveSettings(next, nextJira)}
       />
 
       {/* Phone: bottom tab bar in thumb reach (Fitts), the pattern people know from native apps (Jakob). */}

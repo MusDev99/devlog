@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'preact/hooks';
 import type { User } from '../lib/db.ts';
 import { canVibrate } from '../lib/haptics.ts';
+import { normalizeJiraBase } from '../lib/jira.ts';
 import { canPlaySounds } from '../lib/sounds.ts';
 import { formatMinutes } from '../lib/stats.ts';
 import { DEFAULT_TARGETS, TARGET_LIMITS, type Targets } from '../lib/targets.ts';
@@ -12,11 +13,13 @@ type Props = {
   user: User | null;
   onSignOut: () => void;
   targets: Targets;
+  /** The person's Jira site (https origin, '' = none): bare issue keys in tasks link to it. */
+  jira: string;
   haptics: boolean;
   onHaptics: (on: boolean) => void;
   sound: boolean;
   onSound: (on: boolean) => void;
-  onSave: (targets: Targets) => void;
+  onSave: (targets: Targets, jira: string) => void;
   onClose: () => void;
 };
 
@@ -27,15 +30,19 @@ const FIELDS: { key: keyof Targets; label: string; hint: string; show: (v: numbe
 ];
 
 /** Daily targets. A native modal dialog: focus is trapped, Esc closes, the page behind is inert. */
-export function SettingsDialog({ open, user, onSignOut, targets, haptics, onHaptics, sound, onSound, onSave, onClose }: Props) {
+export function SettingsDialog({ open, user, onSignOut, targets, jira, haptics, onHaptics, sound, onSound, onSave, onClose }: Props) {
   const ref = useRef<HTMLDialogElement>(null);
   const [draft, setDraft] = useState(targets);
+  const [jiraText, setJiraText] = useState(jira);
+  const [jiraError, setJiraError] = useState(false);
 
   useEffect(() => {
     const dialog = ref.current;
     if (!dialog) return;
     if (open && !dialog.open) {
       setDraft(targets);
+      setJiraText(jira);
+      setJiraError(false);
       dialog.showModal();
     } else if (!open && dialog.open) dialog.close();
   }, [open]);
@@ -59,7 +66,9 @@ export function SettingsDialog({ open, user, onSignOut, targets, haptics, onHapt
         class="p-5"
         onSubmit={(e) => {
           e.preventDefault();
-          onSave(draft);
+          const base = normalizeJiraBase(jiraText);
+          if (base === null) return setJiraError(true);
+          onSave(draft, base);
         }}
       >
         <div class="flex items-center justify-between gap-2">
@@ -98,6 +107,37 @@ export function SettingsDialog({ open, user, onSignOut, targets, haptics, onHapt
             );
           })}
         </ul>
+
+        <div class="mt-3 rounded-2xl bg-surface-high px-3.5 py-3">
+          <label for="jira-site" class="font-medium">
+            Jira site
+          </label>
+          <p id="jira-hint" class="text-xs text-muted">
+            Type a key like SKYIQ-123 in a task and it links here. {user ? 'Follows you to every device.' : 'Saved on this device.'}
+          </p>
+          <input
+            id="jira-site"
+            type="text"
+            inputMode="url"
+            autoComplete="off"
+            autoCapitalize="off"
+            spellcheck={false}
+            value={jiraText}
+            onInput={(e) => {
+              setJiraText(e.currentTarget.value);
+              setJiraError(false);
+            }}
+            placeholder="yourteam.atlassian.net"
+            aria-invalid={jiraError ? true : undefined}
+            aria-describedby={jiraError ? 'jira-hint jira-error' : 'jira-hint'}
+            class="mt-2 min-h-11 w-full rounded-xl border border-transparent bg-surface-highest px-3 text-base text-fg outline-none placeholder:text-muted focus:border-accent/60"
+          />
+          {jiraError && (
+            <p id="jira-error" role="alert" class="mt-1.5 text-sm text-error">
+              Use your Jira address, like yourteam.atlassian.net (https only).
+            </p>
+          )}
+        </div>
 
         {/* Per device, apply at once (not part of Save). Each hides where the browser cannot do it (iPhone has no vibration). */}
         {canVibrate() && <SwitchRow label="Vibration" hint="A buzz on Start, Stop and Finish" on={haptics} onChange={onHaptics} />}
