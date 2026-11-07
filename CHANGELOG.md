@@ -2,7 +2,7 @@
 
 ## 2026-11-07 14:00
 
-- feat(tasks): **one way to add per screen size.** On a phone (under 768 px) the quick add row is hidden and **New activity** (the step-by-step flow) is the only add; from 768 px up the quick add stays and the flow button is hidden. The `?new=1` shortcut opens the flow on a phone and focuses the add field on a wide screen
+- feat(tasks): **one way to add per screen size.** On a phone (under 768 px) the quick add row is hidden and **New activity** (the step-by-step flow) is the only add; from 768 px up the quick add stays and the flow button is hidden. The button reads just "New activity" (the "step by step" sub-label is gone). The `?new=1` shortcut opens the flow on a phone and focuses the add field on a wide screen
 
 ## 2026-11-07 12:00
 

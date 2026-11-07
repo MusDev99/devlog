@@ -98,7 +98,6 @@ export function NewActivity({ onAdd }: Props) {
       >
         <Icon name="add" class="size-[18px] text-accent" />
         New activity
-        <span class="text-xs font-semibold text-muted">step by step</span>
       </button>
 
       <dialog
