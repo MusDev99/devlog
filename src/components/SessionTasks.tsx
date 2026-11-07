@@ -259,7 +259,10 @@ export function SessionTasks({ tasks, today, focusId, targetPoints, onAdd, onAdd
       </div>
 
       <div class="mt-4">
-        <Composer onAdd={onAdd} />
+        {/* One way to add per size of screen: the quick add on a wide screen, the guided flow on a phone */}
+        <div class="hidden md:block">
+          <Composer onAdd={onAdd} />
+        </div>
         <NewActivity onAdd={onAddGuided} />
       </div>
 

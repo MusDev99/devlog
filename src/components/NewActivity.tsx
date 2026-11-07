@@ -90,14 +90,14 @@ export function NewActivity({ onAdd }: Props) {
   return (
     <>
       <button
+        id="new-activity"
         type="button"
         onClick={open}
         aria-haspopup="dialog"
-        class="press state-layer mt-3 flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl border border-accent/60 bg-accent/10 px-4 text-sm font-bold md:hidden"
+        class="press state-layer flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl border border-accent/60 bg-accent/10 px-4 text-sm font-bold md:hidden"
       >
         <Icon name="add" class="size-[18px] text-accent" />
         New activity
-        <span class="text-xs font-semibold text-muted">step by step</span>
       </button>
 
       <dialog
