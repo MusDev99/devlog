@@ -254,7 +254,11 @@ export function App({ user, onSignOut }: { user: User | null; onSignOut: () => v
   useEffect(() => {
     if (!location.search) return;
     history.replaceState(null, '', location.pathname);
-    if (launch.newTask) setTimeout(() => document.getElementById('note-text')?.focus(), 300);
+    if (launch.newTask) {
+      // Phone: the guided flow is the only add; a wide screen has the quick add field
+      const phone = !window.matchMedia('(min-width: 768px)').matches;
+      setTimeout(() => (phone ? document.getElementById('new-activity') : document.getElementById('note-text'))?.[phone ? 'click' : 'focus'](), 300);
+    }
   }, []);
 
   // Installed app: open tasks on the home-screen icon; ask the browser to keep this device's data.

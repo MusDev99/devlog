@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-11-07 14:00
+
+- feat(tasks): **one way to add per screen size.** On a phone (under 768 px) the quick add row is hidden and **New activity** (the step-by-step flow) is the only add; from 768 px up the quick add stays and the flow button is hidden. The `?new=1` shortcut opens the flow on a phone and focuses the add field on a wide screen
+
 ## 2026-11-07 12:00
 
 - feat(tasks): **guided "New activity" flow on phones, one question per screen.** A **New activity** button under the quick add opens a full-screen, booking-style flow: what you are working on (required), a Jira or GitHub link (with a live check that it was recognised, e.g. "Jira ticket: SKYIQ-10143"), a story-point size, and a quadrant (four cards with the app's own colour dots). A segmented progress bar, Back (keeps every choice), Skip on every step but the first, a sticky Next / **Add activity** bar, a slide between steps (cut by reduced motion), close or Esc to discard. The quick add stays for fast capture; the button is phones only (hidden from 768 px)
