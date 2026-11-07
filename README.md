@@ -26,7 +26,7 @@ Sign in with Google, time each task (actual vs span), sort them on an urgent × 
 | ✨ Animated sign-in page: a looping product story (sorting, timing, points, sync) in CSS, no GIF | ✅ v2.7 |
 | ✅ Done bucket: finished tasks leave the matrix and can be restored | ✅ v2.8 |
 | 🔗 Links in tasks: Jira URLs show as their key (SKYIQ-10143), click to open | ✅ v2.8 |
-| ➕ On a phone, **New activity** guides you one question per screen: what you are working on, a Jira or GitHub link, a size, and a quadrant; only the title is required, every other step has Skip, and the quick add stays | ✅ |
+| ➕ On a phone, **New activity** guides you one question per screen: what you are working on, a Jira or GitHub link, a size, and a quadrant; only the title is required, every other step has Skip, and it is the only add on a phone (the quick add stays on a wide screen) | ✅ |
 | 🎫 Set your Jira site in Settings and a bare key (SKYIQ-10143) in a task links to it; per profile, like targets | ✅ |
 | 📅 Last 12 weeks calendar: tap a day to see what you worked on | ✅ v2.9 |
 | 📄 CSV report download (12 weeks or one day), built on the device | ✅ v2.9 |
