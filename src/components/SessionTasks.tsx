@@ -5,6 +5,7 @@ import { plainText } from '../lib/links.ts';
 import { doneBucket, listView, places, progressCount } from '../lib/matrix.ts';
 import { PLACES, placeOf, QUADRANT_LABELS, sizeOf, type Draft, type Note, type Place, type Size } from '../lib/notes.ts';
 import { Composer } from './Composer.tsx';
+import { NewActivity } from './NewActivity.tsx';
 import { DoneBucket } from './DoneBucket.tsx';
 import { Icon } from './Icon.tsx';
 import { useStable } from '../lib/use-clock.ts';
@@ -19,6 +20,8 @@ type Props = Omit<RowActions, 'onMenu'> & {
   /** The daily story-point target, shown against today's finished points. */
   targetPoints: number;
   onAdd: (draft: Draft, size: Size, focus: boolean) => Promise<void>;
+  /** The guided New activity flow (phones): the same add, with the quadrant chosen up front. */
+  onAddGuided: (draft: Draft, size: Size, place: Place) => Promise<void>;
 };
 
 type View = 'list' | 'matrix';
@@ -56,7 +59,7 @@ const savedView = (): View => (loadPref(VIEW_KEY) === 'list' ? 'list' : 'matrix'
  * Drag a row with the mouse, or long-press then drag on touch (a plain swipe still scrolls);
  * the row menu moves it without dragging.
  */
-export function SessionTasks({ tasks, today, focusId, targetPoints, onAdd, ...actions }: Props) {
+export function SessionTasks({ tasks, today, focusId, targetPoints, onAdd, onAddGuided, ...actions }: Props) {
   const [view, setView] = useState<View>(savedView);
   const [drag, setDrag] = useState<Drag | null>(null);
   const [menuId, setMenuId] = useState<string | null>(null);
@@ -257,6 +260,7 @@ export function SessionTasks({ tasks, today, focusId, targetPoints, onAdd, ...ac
 
       <div class="mt-4">
         <Composer onAdd={onAdd} />
+        <NewActivity onAdd={onAddGuided} />
       </div>
 
       {list && (
