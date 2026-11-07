@@ -279,14 +279,14 @@ export function App({ user, onSignOut }: { user: User | null; onSignOut: () => v
     return () => window.removeEventListener('keydown', onKey);
   });
 
-  async function add(draft: Draft, size: Size, focus: boolean) {
+  async function add(draft: Draft, size: Size, focus: boolean, place: Place = 'unsorted') {
     if (focus && draft.tag !== 'done') {
       // before any await, while the tap still counts as user activation
       buzz('start');
       playToggle();
     }
     const at = new Date();
-    const note: Note = { id: crypto.randomUUID(), ...draft, quadrant: 'unsorted', size, createdAt: at.toISOString(), day: dayKey(at, timeZone) };
+    const note: Note = { id: crypto.randomUUID(), ...draft, quadrant: place, size, createdAt: at.toISOString(), day: dayKey(at, timeZone) };
     const start = focus && draft.tag !== 'done';
     if (start) select(note.id);
     if (draft.tag === 'done') setToast('Added as done');
@@ -483,6 +483,10 @@ export function App({ user, onSignOut }: { user: User | null; onSignOut: () => v
                 focusId={selected?.id ?? null}
                 targetPoints={targets.points}
                 onAdd={add}
+                onAddGuided={async (draft, size, place) => {
+                  await add(draft, size, false, place);
+                  if (draft.tag !== 'done') setToast(`Added to ${PLACE_NAMES[place]}`);
+                }}
                 onSelect={(note) => select(note.id === selected?.id && !note.startedAt ? null : note.id)}
                 onTimer={toggleTimer}
                 onStatus={(note, tag) => void setStatus(note, tag)}

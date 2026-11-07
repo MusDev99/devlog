@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-11-07 12:00
+
+- feat(tasks): **guided "New activity" flow on phones, one question per screen.** A **New activity** button under the quick add opens a full-screen, booking-style flow: what you are working on (required), a Jira or GitHub link (with a live check that it was recognised, e.g. "Jira ticket: SKYIQ-10143"), a story-point size, and a quadrant (four cards with the app's own colour dots). A segmented progress bar, Back (keeps every choice), Skip on every step but the first, a sticky Next / **Add activity** bar, a slide between steps (cut by reduced motion), close or Esc to discard. The quick add stays for fast capture; the button is phones only (hidden from 768 px)
+- A skipped size counts as 1 and a skipped quadrant stays Unsorted, as in the quick add. `wip:` / `b:` / `done:` prefixes in the title still set a status. A bad link, or a title plus link over 500 characters, is explained on the screen and sends you to the step that can fix it
+- Adding uses the same optimistic save as the quick add: the task shows at once, and if the device write fails the dialog stays open with every answer still there. A toast says where it landed ("Added to Schedule")
+- Rules in `src/lib/flow.ts` (pure, 8 tests): steps, link check, building the text, per-step blockers, the final result. Screens in `src/components/NewActivity.tsx` (a native `<dialog>`: focus trapped, Esc closes). Checked in a phone-sized browser; text contrast measured at 6.5:1 or better in both modes
+
 ## 2026-11-06 23:00
 
 - feat(links): **type a Jira key and it links.** Set your **Jira site** in Settings (`yourteam.atlassian.net`, or paste any page on it); a bare key like `SKYIQ-10143` in a task then becomes the same chip as a pasted Jira URL (`<site>/browse/SKYIQ-10143`), the title drops it, and Stats groups time by that ticket. Nothing changes until a site is set

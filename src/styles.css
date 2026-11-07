@@ -48,6 +48,8 @@
   --animate-rise: rise 240ms var(--ease-standard) both;
   --animate-pop: pop 260ms var(--ease-spring) both;
   --animate-glow: glow 1.6s ease-in-out infinite;
+  --animate-flow-next: flow-in-right 280ms var(--ease-standard) both;
+  --animate-flow-back: flow-in-left 280ms var(--ease-standard) both;
 
   @keyframes rise {
     from {
@@ -57,6 +59,18 @@
     to {
       opacity: 1;
       transform: none;
+    }
+  }
+  @keyframes flow-in-right {
+    from {
+      opacity: 0;
+      transform: translateX(28px);
+    }
+  }
+  @keyframes flow-in-left {
+    from {
+      opacity: 0;
+      transform: translateX(-28px);
     }
   }
   @keyframes pop {
